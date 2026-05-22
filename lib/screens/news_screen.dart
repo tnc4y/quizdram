@@ -190,23 +190,33 @@ class _FeaturedCard extends StatelessWidget {
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          Container(
-                            width: 22,
+                          SizedBox(
+                            width: 36,
                             height: 22,
-                            decoration: BoxDecoration(
-                              color: C.plum,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: C.pink, width: 2),
-                            ),
-                          ),
-                          const SizedBox(width: -4),
-                          Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              color: C.purple,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: C.pink, width: 2),
+                            child: Stack(
+                              children: [
+                                Container(
+                                  width: 22,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    color: C.plum,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: C.pink, width: 2),
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 14,
+                                  child: Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: BoxDecoration(
+                                      color: C.purple,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: C.pink, width: 2),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 8),
