@@ -24,28 +24,9 @@ dergi akışı, liderboard ve kullanıcı profili. Tüm veriler hard-coded mock 
 
 ### Veri Modeli (Firestore Koleksiyonları)
 
-```
-users/{uid}
-  displayName, lang, avatarUrl
-  xp, level, streak, lastPlayedAt
-  badges[]
+> Tam şema, tüm alanlar ve Flutter ↔ Admin Panel eşleşmesi için: **[DATABASE.md](DATABASE.md)**
 
-quizPacks/{packId}
-  title, hangul, region, dramaId
-  questions[{ text, options[], correctId, difficulty }]
-  publishedAt, playCount
-
-results/{resultId}
-  userId, packId, correct, total, elapsedSecs
-  xpEarned, createdAt
-
-news/{newsId}
-  tag, headline, source, publishedAt
-  hangul, hue, category
-
-leaderboard/weekly   → Cloud Function ile birleştirilir
-leaderboard/allTime  → Cloud Function ile birleştirilir
-```
+Koleksiyonlar: `dramas` · `cast` · `quizPacks` · `results` · `news` · `users` · `leaderboard`
 
 ### Admin Paneli Mimarisi
 
