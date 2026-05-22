@@ -23,7 +23,7 @@ class _NewsScreenState extends State<NewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: C.bg,
+      color: context.qp.bg,
       child: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -39,20 +39,20 @@ class _NewsScreenState extends State<NewsScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(S.newsItalic, style: QT.serif(18, c: C.pink)),
-                      Text(S.magazine, style: QT.display(28)),
+                      Text(S.newsItalic, style: QT.serif(18, c: context.qp.pink)),
+                      Text(S.magazine, style: QT.display(28, c: context.qp.ink)),
                     ],
                   ),
                   Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: C.card,
+                      color: context.qp.card,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: C.line),
+                      border: Border.all(color: context.qp.line),
                     ),
-                    child: const Icon(Icons.search_rounded,
-                        color: C.ink, size: 18),
+                    child: Icon(Icons.search_rounded,
+                        color: context.qp.ink, size: 18),
                   ),
                 ],
               ),
@@ -99,6 +99,7 @@ class _FeaturedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qp;
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
@@ -111,32 +112,20 @@ class _FeaturedCard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [C.pink, const Color(0xFFFF8AA3), C.gold],
+                  colors: [p.pink, const Color(0xFFFF8AA3), p.gold],
                   stops: const [0.0, 0.6, 1.0],
                 ),
               ),
             ),
             CustomPaint(
-              painter: StripePainter(
-                color: C.plum,
-                opacity: 0.08,
-                stripeWidth: 12,
-                totalStep: 24,
-              ),
+              painter: StripePainter(color: p.featured, opacity: 0.08, stripeWidth: 12, totalStep: 24),
             ),
-            // Hangul accent
             Positioned(
               top: -10,
               right: -8,
               child: IgnorePointer(
-                child: Text(
-                  news.hangul,
-                  style: QT.hangul(
-                    110,
-                    c: C.plum.withValues(alpha: 0.18),
-                    w: FontWeight.w900,
-                  ),
-                ),
+                child: Text(news.hangul,
+                    style: QT.hangul(110, c: p.featured.withValues(alpha: 0.18), w: FontWeight.w900)),
               ),
             ),
             Padding(
@@ -145,88 +134,51 @@ class _FeaturedCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Tag
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: news.tagBg,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          news.tag,
-                          style: QT.body(
-                            9,
-                            w: FontWeight.w700,
-                            c: news.tagFg,
-                            ls: 1,
-                          ),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: news.tagBg, borderRadius: BorderRadius.circular(999)),
+                        child: Text(news.tag, style: QT.body(9, w: FontWeight.w700, c: news.tagFg, ls: 1)),
                       ),
                       const SizedBox(width: 8),
-                      Text(news.time,
-                          style: QT.body(
-                            11,
-                            c: C.plum.withValues(alpha: 0.7),
-                          )),
+                      Text(news.time, style: QT.body(11, c: p.featured.withValues(alpha: 0.7))),
                     ],
                   ),
-                  // Headline + reactions
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        news.headline,
-                        style: QT.display(
-                          20,
-                          c: C.plum,
-                          w: FontWeight.w700,
-                          h: 1.15,
-                          ls: -20 * 0.02,
-                        ),
-                      ),
+                      Text(news.headline,
+                          style: QT.display(20, c: p.featured, w: FontWeight.w700, h: 1.15, ls: -20 * 0.02)),
                       const SizedBox(height: 10),
                       Row(
                         children: [
                           SizedBox(
                             width: 36,
                             height: 22,
-                            child: Stack(
-                              children: [
-                                Container(
+                            child: Stack(children: [
+                              Container(
+                                width: 22,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                    color: p.featured, shape: BoxShape.circle,
+                                    border: Border.all(color: p.pink, width: 2)),
+                              ),
+                              Positioned(
+                                left: 14,
+                                child: Container(
                                   width: 22,
                                   height: 22,
                                   decoration: BoxDecoration(
-                                    color: C.plum,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: C.pink, width: 2),
-                                  ),
+                                      color: p.purple, shape: BoxShape.circle,
+                                      border: Border.all(color: p.pink, width: 2)),
                                 ),
-                                Positioned(
-                                  left: 14,
-                                  child: Container(
-                                    width: 22,
-                                    height: 22,
-                                    decoration: BoxDecoration(
-                                      color: C.purple,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: C.pink, width: 2),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ]),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            '14.8K beğeni · 2.1K yorum',
-                            style: QT.body(
-                              11,
-                              c: C.plum.withValues(alpha: 0.8),
-                            ),
-                          ),
+                          Text('14.8K beğeni · 2.1K yorum',
+                              style: QT.body(11, c: p.featured.withValues(alpha: 0.8))),
                         ],
                       ),
                     ],
@@ -297,7 +249,7 @@ class _NewsRow extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 '${news.source} · ${news.time}',
-                style: QT.body(10.5, c: C.ink2),
+                style: QT.body(10.5, c: context.qp.ink2),
               ),
             ],
           ),

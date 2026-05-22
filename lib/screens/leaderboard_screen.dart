@@ -18,7 +18,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: C.bg,
+      color: context.qp.bg,
       child: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -27,10 +27,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(S.weeklyLabel,
-                  style: QT.body(10,
-                      c: C.pink, w: FontWeight.w600, ls: 2)),
+                  style: QT.body(10, c: context.qp.pink, w: FontWeight.w600, ls: 2)),
               const SizedBox(height: 2),
-              Text(S.leaderboard, style: QT.display(28)),
+              Text(S.leaderboard, style: QT.display(28, c: context.qp.ink)),
               const SizedBox(height: 14),
               // Filter chips
               SingleChildScrollView(
@@ -71,7 +70,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 class _Podium extends StatelessWidget {
   static const _order = [1, 0, 2]; // #2, #1, #3 positions
   static const _sizes = [56.0, 72.0, 56.0];
-  static const _hues = [C.purple, C.pink, C.gold];
+  static const _hues = [Color(0xFF7C5ED3), Color(0xFFFF5470), Color(0xFFFFC857)];
   static const _hanguls = ['葵', '민지', '魏'];
 
   @override
@@ -81,22 +80,21 @@ class _Podium extends StatelessWidget {
       borderRadius: BorderRadius.circular(22),
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [C.plum, Color(0xFF4A2D7C)],
+            colors: [context.qp.featured, const Color(0xFF4A2D7C)],
           ),
         ),
         child: Stack(
           children: [
-            // Decorative hangul
             Positioned(
               top: -12,
               right: -10,
               child: IgnorePointer(
                 child: Text('1위',
-                    style: QT.hangul(100, c: C.pink.withValues(alpha: 0.25))),
+                    style: QT.hangul(100, c: context.qp.pink.withValues(alpha: 0.25))),
               ),
             ),
             Column(
@@ -127,48 +125,34 @@ class _Podium extends StatelessWidget {
                               ),
                               Positioned(
                                 bottom: -8,
-                                child: Container(
+                                child: Builder(builder: (ctx) => Container(
                                   width: 22,
                                   height: 22,
                                   decoration: BoxDecoration(
-                                    color: isFirst ? C.gold : C.bg,
+                                    color: isFirst ? ctx.qp.gold : ctx.qp.bg,
                                     shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: C.plum, width: 2),
+                                    border: Border.all(color: ctx.qp.featured, width: 2),
                                   ),
                                   alignment: Alignment.center,
                                   child: Text(
                                     '${entry.rank}',
-                                    style: QT.display(
-                                      11,
-                                      c: C.plum,
-                                      w: FontWeight.w700,
-                                      ls: 0,
-                                    ),
+                                    style: QT.display(11, c: ctx.qp.featured, w: FontWeight.w700, ls: 0),
                                   ),
-                                ),
+                                )),
                               ),
                             ],
                           ),
                           const SizedBox(height: 14),
-                          Text(
-                            '${entry.country} ${entry.name}',
-                            style: QT.display(
-                              11,
-                              c: const Color(0xFFFFF5F0),
-                              w: FontWeight.w600,
+                          Builder(builder: (ctx) => Column(children: [
+                            Text(
+                              '${entry.country} ${entry.name}',
+                              style: QT.display(11, c: ctx.qp.bg, w: FontWeight.w600),
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${entry.score} XP',
-                            style: QT.body(
-                              10,
-                              c: const Color(0xB3FFF5F0),
-                            ),
-                          ),
+                            const SizedBox(height: 2),
+                            Text('${entry.score} XP', style: QT.body(10, c: ctx.qp.bg.withValues(alpha: 0.7))),
+                          ])),
                         ],
                       ),
                     );
@@ -190,32 +174,26 @@ class _LeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qp;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: entry.isYou ? C.ink : C.card,
+        color: entry.isYou ? p.featured : p.card,
         borderRadius: BorderRadius.circular(14),
-        border: entry.isYou ? null : Border.all(color: C.line),
+        border: entry.isYou ? null : Border.all(color: p.line),
       ),
       child: Row(
         children: [
           SizedBox(
             width: 28,
-            child: Text(
-              '#${entry.rank}',
-              style: QT.display(
-                14,
-                c: entry.isYou ? C.gold : C.ink2,
-                w: FontWeight.w700,
-                ls: 0,
-              ),
-            ),
+            child: Text('#${entry.rank}',
+                style: QT.display(14, c: entry.isYou ? p.gold : p.ink2, w: FontWeight.w700, ls: 0)),
           ),
           Container(
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: entry.isYou ? C.pink : C.sand,
+              color: entry.isYou ? p.pink : p.sand,
               shape: BoxShape.circle,
             ),
           ),
@@ -226,29 +204,14 @@ class _LeaderRow extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      '${entry.country} ${entry.name}',
-                      style: QT.display(
-                        13,
-                        c: entry.isYou ? C.bg : C.ink,
-                        w: FontWeight.w600,
-                      ),
-                    ),
+                    Text('${entry.country} ${entry.name}',
+                        style: QT.display(13, c: entry.isYou ? p.bg : p.ink, w: FontWeight.w600)),
                     if (entry.isYou) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: C.gold,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(S.you,
-                            style: QT.body(
-                              9,
-                              c: C.plum,
-                              w: FontWeight.w700,
-                            )),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(color: p.gold, borderRadius: BorderRadius.circular(4)),
+                        child: Text(S.you, style: QT.body(9, c: p.featured, w: FontWeight.w700)),
                       ),
                     ],
                   ],
@@ -256,28 +219,18 @@ class _LeaderRow extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
-                    Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 11,
-                      color: entry.isYou ? C.gold : C.pink,
-                    ),
+                    Icon(Icons.local_fire_department_rounded,
+                        size: 11, color: entry.isYou ? p.gold : p.pink),
                     const SizedBox(width: 3),
-                    Text(
-                      '${entry.streak}g · ${entry.score}',
-                      style: QT.body(
-                        10,
-                        c: entry.isYou
-                            ? C.bg.withValues(alpha: 0.7)
-                            : C.ink2,
-                      ),
-                    ),
+                    Text('${entry.streak}g · ${entry.score}',
+                        style: QT.body(10, c: entry.isYou ? p.bg.withValues(alpha: 0.7) : p.ink2)),
                   ],
                 ),
               ],
             ),
           ),
           if (!entry.isYou)
-            Icon(Icons.trending_up_rounded, color: C.ink2, size: 16),
+            Icon(Icons.trending_up_rounded, color: p.ink2, size: 16),
         ],
       ),
     );

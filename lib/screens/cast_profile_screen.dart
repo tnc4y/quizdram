@@ -22,7 +22,7 @@ class _CastProfileScreenState extends State<CastProfileScreen> {
     final cast = widget.member ?? kCast[0];
 
     return Material(
-      color: C.bg,
+      color: context.qp.bg,
       child: Stack(
         children: [
           SingleChildScrollView(
@@ -44,22 +44,20 @@ class _CastProfileScreenState extends State<CastProfileScreen> {
                           _RegionTag(cast.region),
                           const SizedBox(width: 6),
                           Text('· ${cast.age}',
-                              style: QT.body(12, c: C.ink2)),
+                              style: QT.body(12, c: context.qp.ink2)),
                           const SizedBox(width: 6),
                           Text('· ${cast.role}',
-                              style: QT.body(12, c: C.ink2)),
+                              style: QT.body(12, c: context.qp.ink2)),
                         ],
                       ),
                       const SizedBox(height: 6),
                       Text(cast.name,
-                          style: QT.display(30, w: FontWeight.w700)),
+                          style: QT.display(30, c: context.qp.ink, w: FontWeight.w700)),
                       const SizedBox(height: 2),
                       Text(cast.hangul,
-                          style: QT.hangul(14, c: C.ink2,
-                              w: FontWeight.w700)),
-                      // Stats row
+                          style: QT.hangul(14, c: context.qp.ink2, w: FontWeight.w700)),
                       const SizedBox(height: 14),
-                      const Divider(color: C.line, height: 1),
+                      Divider(color: context.qp.line, height: 1),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         child: Row(
@@ -72,7 +70,7 @@ class _CastProfileScreenState extends State<CastProfileScreen> {
                           ],
                         ),
                       ),
-                      const Divider(color: C.line, height: 1),
+                      Divider(color: context.qp.line, height: 1),
                       const SizedBox(height: 16),
                       // Tabs
                       Row(
@@ -113,8 +111,8 @@ class _CastProfileScreenState extends State<CastProfileScreen> {
                       color: Colors.white.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.arrow_back_rounded,
-                        color: C.ink, size: 18),
+                    child: Icon(Icons.arrow_back_rounded,
+                        color: context.qp.ink, size: 18),
                   ),
                 ),
               ),
@@ -143,7 +141,7 @@ class _Hero extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [cast.hue, C.plum],
+                colors: [cast.hue, context.qp.featured],
                 stops: const [0.0, 0.85],
               ),
             ),
@@ -157,21 +155,20 @@ class _Hero extends StatelessWidget {
               totalStep: 36,
             ),
           ),
-          // Fade to bg at bottom
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: Container(
+            child: Builder(builder: (ctx) => Container(
               height: 120,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, C.bg],
+                  colors: [Colors.transparent, ctx.qp.bg],
                 ),
               ),
-            ),
+            )),
           ),
           // Hangul accent
           Positioned(
@@ -201,7 +198,7 @@ class _Hero extends StatelessWidget {
                   children: [
                     _HeroBtn(Icons.bookmark_outline_rounded),
                     const SizedBox(width: 8),
-                    _HeroBtn(Icons.favorite_border_rounded, fill: C.pink),
+                    _HeroBtn(Icons.favorite_border_rounded, fill: context.qp.pink),
                   ],
                 ),
               ),
@@ -227,7 +224,7 @@ class _HeroBtn extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(icon, color: fill ?? C.ink, size: 18),
+      child: Icon(icon, color: fill ?? context.qp.ink, size: 18),
     );
   }
 }
@@ -237,15 +234,15 @@ class _RegionTag extends StatelessWidget {
   const _RegionTag(this.region);
 
   static const _map = {
-    'kr': ('KR', C.pink),
+    'kr': ('KR', Color(0xFFFF5470)),
     'cn': ('CN', Color(0xFFE94560)),
-    'jp': ('JP', C.purple),
-    'th': ('TH', C.gold),
+    'jp': ('JP', Color(0xFF7C5ED3)),
+    'th': ('TH', Color(0xFFFFC857)),
   };
 
   @override
   Widget build(BuildContext context) {
-    final (code, color) = _map[region] ?? ('??', C.ink2);
+    final (code, color) = _map[region] ?? ('??', context.qp.ink2);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
@@ -266,10 +263,9 @@ class _StatCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value,
-            style: QT.display(17, w: FontWeight.w700)),
+        Text(value, style: QT.display(17, c: context.qp.ink, w: FontWeight.w700)),
         const SizedBox(height: 2),
-        Text(label, style: QT.body(10, c: C.ink2)),
+        Text(label, style: QT.body(10, c: context.qp.ink2)),
       ],
     );
   }
@@ -290,7 +286,7 @@ class _Tab extends StatelessWidget {
           Text(label,
               style: QT.display(
                 13,
-                c: active ? C.ink : C.ink2,
+                c: active ? context.qp.ink : context.qp.ink2,
                 w: active ? FontWeight.w700 : FontWeight.w500,
               )),
           const SizedBox(height: 6),
@@ -299,7 +295,7 @@ class _Tab extends StatelessWidget {
               height: 2,
               width: 24,
               decoration: BoxDecoration(
-                color: C.pink,
+                color: context.qp.pink,
                 borderRadius: BorderRadius.circular(1),
               ),
             )
@@ -315,9 +311,9 @@ class _Tab extends StatelessWidget {
 class _Filmography extends StatelessWidget {
   final CastMember cast;
   static const _films = [
-    (title: 'Lunar Tide',     year: 2024, role: 'Lead',       hue: C.pink,   h: '달'),
-    (title: 'Crimson Letter', year: 2023, role: 'Lead',       hue: C.plum,   h: '진'),
-    (title: 'Glass Mountain', year: 2022, role: 'Supporting', hue: C.gold,   h: '유'),
+    (title: 'Lunar Tide',     year: 2024, role: 'Lead',       hue: Color(0xFFFF5470), h: '달'),
+    (title: 'Crimson Letter', year: 2023, role: 'Lead',       hue: Color(0xFF2D1B4E), h: '진'),
+    (title: 'Glass Mountain', year: 2022, role: 'Supporting', hue: Color(0xFFFFC857), h: '유'),
   ];
   const _Filmography({required this.cast});
 
@@ -329,29 +325,21 @@ class _Filmography extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: C.card,
+            color: context.qp.card,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: C.line),
+            border: Border.all(color: context.qp.line),
           ),
           child: Row(
             children: [
-              QzPhoto(
-                hue: f.hue,
-                label: f.h,
-                width: 62,
-                height: 78,
-                borderRadius: 10,
-              ),
+              QzPhoto(hue: f.hue, label: f.h, width: 62, height: 78, borderRadius: 10),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(f.title,
-                        style: QT.display(14, w: FontWeight.w600)),
+                    Text(f.title, style: QT.display(14, c: context.qp.ink, w: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Text('${f.year} · ${f.role}',
-                        style: QT.body(11, c: C.ink2)),
+                    Text('${f.year} · ${f.role}', style: QT.body(11, c: context.qp.ink2)),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -359,15 +347,13 @@ class _Filmography extends StatelessWidget {
                           width: 22,
                           height: 22,
                           decoration: BoxDecoration(
-                            color: C.sand,
+                            color: context.qp.sand,
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: Icon(Icons.play_arrow_rounded,
-                              color: C.pink, size: 14),
+                          child: Icon(Icons.play_arrow_rounded, color: context.qp.pink, size: 14),
                         ),
                         const SizedBox(width: 6),
-                        Text(S.playQuiz16,
-                            style: QT.body(11, c: C.ink2)),
+                        Text(S.playQuiz16, style: QT.body(11, c: context.qp.ink2)),
                       ],
                     ),
                   ],
@@ -391,21 +377,17 @@ class _QuizCTA extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: C.card,
+        color: context.qp.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: C.line),
+        border: Border.all(color: context.qp.line),
       ),
       child: Row(
         children: [
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(
-              color: C.pink,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.play_arrow_rounded,
-                color: Colors.white, size: 22),
+            decoration: BoxDecoration(color: context.qp.pink, borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -413,18 +395,15 @@ class _QuizCTA extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${cast.name.split(' ').first} quizi',
-                    style: QT.display(14, w: FontWeight.w600)),
+                    style: QT.display(14, c: context.qp.ink, w: FontWeight.w600)),
                 const SizedBox(height: 2),
-                Text(S.quiz16Stats,
-                    style: QT.body(11, c: C.ink2)),
+                Text(S.quiz16Stats, style: QT.body(11, c: context.qp.ink2)),
               ],
             ),
           ),
           GestureDetector(
             onTap: () => AppRouter.toQuizPlay(context),
-            child: Text(S.playBtn,
-                style: QT.display(12,
-                    c: C.plum, w: FontWeight.w700)),
+            child: Text(S.playBtn, style: QT.display(12, c: context.qp.ink, w: FontWeight.w700)),
           ),
         ],
       ),
@@ -439,7 +418,7 @@ class _CastNews extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 32),
-        child: Text(S.comingSoon, style: QT.body(14, c: C.ink3)),
+        child: Text(S.comingSoon, style: QT.body(14, c: context.qp.ink3)),
       ),
     );
   }

@@ -1,7 +1,14 @@
 import 'package:flutter/foundation.dart';
+import 'theme.dart';
 
 /// Selected app language — set once during onboarding, read everywhere.
 final appLang = ValueNotifier<String>('tr');
+
+/// Active color palette — 'cream' | 'midnight'
+final appPalette = ValueNotifier<String>('cream');
+
+QzPalette get currentPalette =>
+    appPalette.value == 'midnight' ? QzPalette.midnight : QzPalette.cream;
 
 /// Returns the correct string for the current language.
 String t(String tr, String en, String ko) {

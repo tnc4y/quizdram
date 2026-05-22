@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'theme.dart';
+import 'lang.dart';
 import 'screens/onboarding_screen.dart';
 
 void main() {
@@ -14,11 +15,14 @@ class QuizDramApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Quizdram',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(),
-      home: const OnboardingScreen(),
+    return ValueListenableBuilder<String>(
+      valueListenable: appPalette,
+      builder: (context, value, _) => MaterialApp(
+        title: 'Quizdram',
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(currentPalette),
+        home: const OnboardingScreen(),
+      ),
     );
   }
 }

@@ -11,7 +11,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: C.bg,
+      color: context.qp.bg,
       child: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -51,9 +51,9 @@ class _Header extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(S.greeting, style: QT.body(12, c: C.ink3)),
+            Text(S.greeting, style: QT.body(12, c: context.qp.ink3)),
             Text('Sen 👋',
-                style: QT.display(22, w: FontWeight.w700, ls: -22 * 0.02)),
+                style: QT.display(22, c: context.qp.ink, w: FontWeight.w700, ls: -22 * 0.02)),
           ],
         ),
         Row(
@@ -69,8 +69,8 @@ class _Header extends StatelessWidget {
                   child: Container(
                     width: 7,
                     height: 7,
-                    decoration: const BoxDecoration(
-                      color: C.pink,
+                    decoration: BoxDecoration(
+                      color: context.qp.pink,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -90,15 +90,16 @@ class _IconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qp;
     return Container(
       width: 38,
       height: 38,
       decoration: BoxDecoration(
-        color: C.card,
+        color: p.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: C.line),
+        border: Border.all(color: p.line),
       ),
-      child: Icon(icon, color: C.ink, size: 18),
+      child: Icon(icon, color: p.ink, size: 18),
     );
   }
 }
@@ -107,76 +108,42 @@ class _IconBtn extends StatelessWidget {
 class _HeroQuizCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final p = context.qp;
     return GestureDetector(
       onTap: () => AppRouter.toQuizPlay(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
         child: Container(
           height: 200,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [C.plum, Color(0xFF5B3A8E)],
+              colors: [p.featured, const Color(0xFF5B3A8E)],
             ),
           ),
           padding: const EdgeInsets.all(18),
           child: Stack(
             children: [
-              // Decorative hangul
               Positioned(
                 top: -16,
                 right: -10,
-                child: Text(
-                  '오늘',
-                  style: QT.hangul(
-                    120,
-                    c: C.pink.withValues(alpha: 0.25),
-                  ),
-                ),
+                child: Text('오늘', style: QT.hangul(120, c: p.pink.withValues(alpha: 0.25))),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: C.gold,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      S.todayQuiz,
-                      style: QT.body(
-                        9,
-                        w: FontWeight.w700,
-                        c: C.plum,
-                        ls: 0.6,
-                      ),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(color: p.gold, borderRadius: BorderRadius.circular(999)),
+                    child: Text(S.todayQuiz, style: QT.body(9, w: FontWeight.w700, c: p.featured, ls: 0.6)),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Lunar Tide\n',
-                    style: QT.display(
-                      26,
-                      c: const Color(0xFFFFF5F0),
-                      w: FontWeight.w700,
-                      h: 1.05,
-                    ),
-                  ),
-                  Text(
-                    S.guessTitle,
-                    style: QT.display(
-                      18,
-                      c: C.gold,
-                      w: FontWeight.w700,
-                    ),
-                  ),
+                  Text('Lunar Tide\n', style: QT.display(26, c: p.bg, w: FontWeight.w700, h: 1.05)),
+                  Text(S.guessTitle, style: QT.display(18, c: p.gold, w: FontWeight.w700)),
                   const Spacer(),
                   Row(
                     children: [
-                      // Avatar overlap
                       SizedBox(
                         width: 70,
                         height: 32,
@@ -189,14 +156,9 @@ class _HeroQuizCard extends StatelessWidget {
                                   width: 32,
                                   height: 32,
                                   decoration: BoxDecoration(
-                                    color: [
-                                      C.pink,
-                                      C.gold,
-                                      C.purple
-                                    ][i],
+                                    color: [p.pink, p.gold, p.purple][i],
                                     shape: BoxShape.circle,
-                                    border: Border.all(
-                                        color: C.plum, width: 2),
+                                    border: Border.all(color: p.featured, width: 2),
                                   ),
                                 ),
                               ),
@@ -204,13 +166,9 @@ class _HeroQuizCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        S.quizMeta,
-                        style: QT.body(12, c: const Color(0xCCFFF5F0)),
-                      ),
+                      Text(S.quizMeta, style: QT.body(12, c: p.bg.withValues(alpha: 0.8))),
                       const Spacer(),
-                      Icon(Icons.arrow_forward_rounded,
-                          color: C.gold, size: 18),
+                      Icon(Icons.arrow_forward_rounded, color: p.gold, size: 18),
                     ],
                   ),
                 ],
@@ -261,14 +219,15 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qp;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.baseline,
       textBaseline: TextBaseline.alphabetic,
       children: [
-        Text(title, style: QT.display(18)),
+        Text(title, style: QT.display(18, c: p.ink)),
         if (trailing.isNotEmpty)
-          Text(trailing, style: QT.body(12, c: C.ink2)),
+          Text(trailing, style: QT.body(12, c: p.ink2)),
       ],
     );
   }
@@ -309,11 +268,12 @@ class _QuizTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qp;
     return Container(
       decoration: BoxDecoration(
-        color: C.card,
+        color: p.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: C.line),
+        border: Border.all(color: p.line),
       ),
       padding: const EdgeInsets.all(14),
       child: Stack(
@@ -321,10 +281,7 @@ class _QuizTypeCard extends StatelessWidget {
           Positioned(
             top: -8,
             right: -6,
-            child: Text(
-              cat.hangul,
-              style: QT.hangul(48, c: cat.color.withValues(alpha: 0.18)),
-            ),
+            child: Text(cat.hangul, style: QT.hangul(48, c: cat.color.withValues(alpha: 0.18))),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -333,18 +290,14 @@ class _QuizTypeCard extends StatelessWidget {
               Container(
                 width: 30,
                 height: 30,
-                decoration: BoxDecoration(
-                  color: cat.color,
-                  borderRadius: BorderRadius.circular(9),
-                ),
+                decoration: BoxDecoration(color: cat.color, borderRadius: BorderRadius.circular(9)),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(cat.title,
-                      style: QT.display(13, w: FontWeight.w600, h: 1.15)),
+                  Text(cat.title, style: QT.display(13, c: p.ink, w: FontWeight.w600, h: 1.15)),
                   const SizedBox(height: 2),
-                  Text(cat.sub, style: QT.body(11, c: C.ink2)),
+                  Text(cat.sub, style: QT.body(11, c: p.ink2)),
                 ],
               ),
             ],
@@ -387,9 +340,9 @@ class _TrendingStrip extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(d.title,
-                    style: QT.display(13, w: FontWeight.w600)),
+                    style: QT.display(13, c: context.qp.ink, w: FontWeight.w600)),
                 const SizedBox(height: 2),
-                Text('${_counts[i]} ${S.playing}', style: QT.body(11, c: C.ink2)),
+                Text('${_counts[i]} ${S.playing}', style: QT.body(11, c: context.qp.ink2)),
               ],
             ),
           );

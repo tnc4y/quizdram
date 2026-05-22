@@ -10,10 +10,11 @@ class QzChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.qp;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
       decoration: BoxDecoration(
-        color: active ? C.plum : C.plum.withValues(alpha: 0.06),
+        color: active ? p.ink : p.ink.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -21,7 +22,7 @@ class QzChip extends StatelessWidget {
         style: QT.body(
           12,
           w: FontWeight.w600,
-          c: active ? C.bg : C.plum,
+          c: active ? p.bg : p.ink,
           ls: 0.1,
         ),
       ),

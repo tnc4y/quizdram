@@ -29,7 +29,7 @@ class _ShellScreenState extends State<ShellScreen> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     return Scaffold(
-      backgroundColor: C.bg,
+      backgroundColor: context.qp.bg,
       body: Stack(
         children: [
           IndexedStack(

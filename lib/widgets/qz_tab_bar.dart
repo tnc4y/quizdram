@@ -43,12 +43,12 @@ class QzTabBar extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.88),
+            color: context.qp.card.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: C.line),
+            border: Border.all(color: context.qp.line),
             boxShadow: [
               BoxShadow(
-                color: C.plum.withValues(alpha: 0.08),
+                color: context.qp.ink.withValues(alpha: 0.08),
                 blurRadius: 22,
                 offset: const Offset(0, 6),
               ),
@@ -58,7 +58,7 @@ class QzTabBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(5, (i) {
               final isActive = i == activeIndex;
-              final color = isActive ? C.pink : C.plum.withValues(alpha: 0.5);
+              final color = isActive ? context.qp.pink : context.qp.ink.withValues(alpha: 0.5);
               return GestureDetector(
                 onTap: () => onTap(i),
                 behavior: HitTestBehavior.opaque,
@@ -81,7 +81,7 @@ class QzTabBar extends StatelessWidget {
                               width: 5,
                               height: 5,
                               decoration: BoxDecoration(
-                                color: C.pink,
+                                color: context.qp.pink,
                                 shape: BoxShape.circle,
                               ),
                             ),
