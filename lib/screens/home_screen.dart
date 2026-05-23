@@ -1,12 +1,44 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
+import '../data.dart';
 import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
 import '../router.dart';
+import '../services/service_locator.dart';
 
-class HomeScreen extends StatelessWidget {
+// ── Screen ───────────────────────────────────────────────────────
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late Future<({String userName, String featuredTitle, List<Drama> dramas})> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<({String userName, String featuredTitle, List<Drama> dramas})> _load() async {
+    final results = await Future.wait([
+      sl.user.getDisplayName(),
+      sl.quiz.getTodayOptions(),
+      sl.drama.getTrending(limit: 5),
+    ]);
+    final name = results[0] as String;
+    final opts = results[1] as List<QuizOpt>;
+    final dramas = results[2] as List<Drama>;
+    return (
+      userName: name,
+      featuredTitle: opts.isNotEmpty ? opts.first.text : 'Lunar Tide',
+      dramas: dramas.isNotEmpty ? dramas : kDramas.take(3).toList(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,37 +46,50 @@ class HomeScreen extends StatelessWidget {
       color: context.qp.bg,
       child: SafeArea(
         bottom: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Header(),
-              const SizedBox(height: 16),
-              _HeroQuizCard(),
-              const SizedBox(height: 18),
-              _RegionChips(),
-              const SizedBox(height: 22),
-              _SectionTitle(S.quizTypes, trailing: ''),
-              const SizedBox(height: 12),
-              _QuizTypeGrid(),
-              const SizedBox(height: 22),
-              _SectionTitle(S.trending, trailing: S.seeAll),
-              const SizedBox(height: 12),
-              _TrendingStrip(),
-              const SizedBox(height: 100),
-            ],
-          ),
+        child: FutureBuilder<({String userName, String featuredTitle, List<Drama> dramas})>(
+          future: _future,
+          builder: (context, snap) {
+            final data = snap.data;
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Header(name: data?.userName ?? ''),
+                  const SizedBox(height: 16),
+                  _HeroQuizCard(title: data?.featuredTitle ?? 'Lunar Tide'),
+                  const SizedBox(height: 18),
+                  _RegionChips(),
+                  const SizedBox(height: 22),
+                  _SectionTitle(S.quizTypes, trailing: ''),
+                  const SizedBox(height: 12),
+                  _QuizTypeGrid(),
+                  const SizedBox(height: 22),
+                  _SectionTitle(S.trending, trailing: S.seeAll),
+                  const SizedBox(height: 12),
+                  if (data == null)
+                    _TrendingShimmer()
+                  else
+                    _TrendingStrip(dramas: data.dramas),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-// ── Header ──────────────────────────────────────────────────────
+// ── Header ───────────────────────────────────────────────────────
 class _Header extends StatelessWidget {
+  final String name;
+  const _Header({required this.name});
+
   @override
   Widget build(BuildContext context) {
+    final displayName = name.isNotEmpty ? name : 'Sen';
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -52,7 +97,7 @@ class _Header extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(S.greeting, style: QT.body(12, c: context.qp.ink3)),
-            Text('Sen 👋',
+            Text('$displayName 👋',
                 style: QT.display(22, c: context.qp.ink, w: FontWeight.w700, ls: -22 * 0.02)),
           ],
         ),
@@ -104,8 +149,11 @@ class _IconBtn extends StatelessWidget {
   }
 }
 
-// ── Today's quiz hero card ──────────────────────────────────────
+// ── Today's quiz hero card ────────────────────────────────────────
 class _HeroQuizCard extends StatelessWidget {
+  final String title;
+  const _HeroQuizCard({required this.title});
+
   @override
   Widget build(BuildContext context) {
     final p = context.qp;
@@ -135,12 +183,17 @@ class _HeroQuizCard extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: p.gold, borderRadius: BorderRadius.circular(999)),
-                    child: Text(S.todayQuiz, style: QT.body(9, w: FontWeight.w700, c: p.featured, ls: 0.6)),
+                    decoration: BoxDecoration(
+                        color: p.gold, borderRadius: BorderRadius.circular(999)),
+                    child: Text(S.todayQuiz,
+                        style: QT.body(9, w: FontWeight.w700, c: p.featured, ls: 0.6)),
                   ),
                   const SizedBox(height: 12),
-                  Text('Lunar Tide\n', style: QT.display(26, c: p.bg, w: FontWeight.w700, h: 1.05)),
-                  Text(S.guessTitle, style: QT.display(18, c: p.gold, w: FontWeight.w700)),
+                  Text(title,
+                      style: QT.display(26, c: p.bg, w: FontWeight.w700, h: 1.05)),
+                  const SizedBox(height: 4),
+                  Text(S.guessTitle,
+                      style: QT.display(18, c: p.gold, w: FontWeight.w700)),
                   const Spacer(),
                   Row(
                     children: [
@@ -166,7 +219,8 @@ class _HeroQuizCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text(S.quizMeta, style: QT.body(12, c: p.bg.withValues(alpha: 0.8))),
+                      Text(S.quizMeta,
+                          style: QT.body(12, c: p.bg.withValues(alpha: 0.8))),
                       const Spacer(),
                       Icon(Icons.arrow_forward_rounded, color: p.gold, size: 18),
                     ],
@@ -181,7 +235,7 @@ class _HeroQuizCard extends StatelessWidget {
   }
 }
 
-// ── Region filter chips ─────────────────────────────────────────
+// ── Region filter chips ───────────────────────────────────────────
 class _RegionChips extends StatefulWidget {
   @override
   State<_RegionChips> createState() => _RegionChipsState();
@@ -191,8 +245,8 @@ class _RegionChipsState extends State<_RegionChips> {
   int _active = 0;
 
   List<String> get _chips => [
-    S.all, S.chipKDrama, S.chipCDrama, S.chipJDrama, S.chipThai,
-  ];
+        S.all, S.chipKDrama, S.chipCDrama, S.chipJDrama, S.chipThai,
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -200,19 +254,22 @@ class _RegionChipsState extends State<_RegionChips> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: List.generate(chips.length, (i) => Padding(
-          padding: EdgeInsets.only(right: i < chips.length - 1 ? 8 : 0),
-          child: GestureDetector(
-            onTap: () => setState(() => _active = i),
-            child: QzChip(chips[i], active: i == _active),
+        children: List.generate(
+          chips.length,
+          (i) => Padding(
+            padding: EdgeInsets.only(right: i < chips.length - 1 ? 8 : 0),
+            child: GestureDetector(
+              onTap: () => setState(() => _active = i),
+              child: QzChip(chips[i], active: i == _active),
+            ),
           ),
-        )),
+        ),
       ),
     );
   }
 }
 
-// ── Section title row ───────────────────────────────────────────
+// ── Section title row ─────────────────────────────────────────────
 class _SectionTitle extends StatelessWidget {
   final String title, trailing;
   const _SectionTitle(this.title, {required this.trailing});
@@ -226,14 +283,13 @@ class _SectionTitle extends StatelessWidget {
       textBaseline: TextBaseline.alphabetic,
       children: [
         Text(title, style: QT.display(18, c: p.ink)),
-        if (trailing.isNotEmpty)
-          Text(trailing, style: QT.body(12, c: p.ink2)),
+        if (trailing.isNotEmpty) Text(trailing, style: QT.body(12, c: p.ink2)),
       ],
     );
   }
 }
 
-// ── Quiz type 2×2 grid ──────────────────────────────────────────
+// ── Quiz type 2×2 grid ────────────────────────────────────────────
 class _QuizTypeGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -281,7 +337,8 @@ class _QuizTypeCard extends StatelessWidget {
           Positioned(
             top: -8,
             right: -6,
-            child: Text(cat.hangul, style: QT.hangul(48, c: cat.color.withValues(alpha: 0.18))),
+            child: Text(cat.hangul,
+                style: QT.hangul(48, c: cat.color.withValues(alpha: 0.18))),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,12 +347,14 @@ class _QuizTypeCard extends StatelessWidget {
               Container(
                 width: 30,
                 height: 30,
-                decoration: BoxDecoration(color: cat.color, borderRadius: BorderRadius.circular(9)),
+                decoration: BoxDecoration(
+                    color: cat.color, borderRadius: BorderRadius.circular(9)),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(cat.title, style: QT.display(13, c: p.ink, w: FontWeight.w600, h: 1.15)),
+                  Text(cat.title,
+                      style: QT.display(13, c: p.ink, w: FontWeight.w600, h: 1.15)),
                   const SizedBox(height: 2),
                   Text(cat.sub, style: QT.body(11, c: p.ink2)),
                 ],
@@ -308,32 +367,27 @@ class _QuizTypeCard extends StatelessWidget {
   }
 }
 
-// ── Trending dramas horizontal strip ───────────────────────────
+// ── Trending dramas horizontal strip ─────────────────────────────
 class _TrendingStrip extends StatelessWidget {
-  static const _items = [
-    _Trend('Neon Seoul',     '네온', Color(0xFFFF5470)),
-    _Trend('Phoenix Court',  '凤凰', Color(0xFFFFC857)),
-    _Trend('Tokyo 5AM',      '東京', Color(0xFF7C5ED3)),
-  ];
-
-  static const _counts = ['12k', '8.4k', '5.2k'];
+  final List<Drama> dramas;
+  const _TrendingStrip({required this.dramas});
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: List.generate(_items.length, (i) {
-          final d = _items[i];
+        children: List.generate(dramas.length, (i) {
+          final d = dramas[i];
+          final label = d.hangul.isNotEmpty ? d.hangul[0] : d.title[0];
           return Padding(
-            padding:
-                EdgeInsets.only(right: i < _items.length - 1 ? 10 : 0),
+            padding: EdgeInsets.only(right: i < dramas.length - 1 ? 10 : 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 QzPhoto(
-                  hue: d.color,
-                  label: d.hangul,
+                  hue: d.hue,
+                  label: label,
                   width: 116,
                   height: 150,
                   borderRadius: 14,
@@ -342,7 +396,7 @@ class _TrendingStrip extends StatelessWidget {
                 Text(d.title,
                     style: QT.display(13, c: context.qp.ink, w: FontWeight.w600)),
                 const SizedBox(height: 2),
-                Text('${_counts[i]} ${S.playing}', style: QT.body(11, c: context.qp.ink2)),
+                Text(d.genre, style: QT.body(11, c: context.qp.ink2)),
               ],
             ),
           );
@@ -352,8 +406,35 @@ class _TrendingStrip extends StatelessWidget {
   }
 }
 
-class _Trend {
-  final String title, hangul;
-  final Color color;
-  const _Trend(this.title, this.hangul, this.color);
+// ── Trending shimmer (loading state) ─────────────────────────────
+class _TrendingShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final p = context.qp;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: List.generate(3, (i) => Padding(
+          padding: EdgeInsets.only(right: i < 2 ? 10 : 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 116,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: p.card,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(width: 90, height: 13, color: p.card),
+              const SizedBox(height: 4),
+              Container(width: 60, height: 11, color: p.card),
+            ],
+          ),
+        )),
+      ),
+    );
+  }
 }

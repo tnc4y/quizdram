@@ -27,7 +27,6 @@ class _ShellScreenState extends State<ShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       backgroundColor: context.qp.bg,
       body: Stack(
@@ -36,11 +35,11 @@ class _ShellScreenState extends State<ShellScreen> {
             index: _idx,
             children: _screens,
           ),
-          // Floating tab bar
+          // Floating tab bar — safe area handled inside QzTabBar
           Positioned(
             left: 12,
             right: 12,
-            bottom: bottomInset + 8,
+            bottom: 0,
             child: QzTabBar(
               activeIndex: _idx,
               onTap: (i) => setState(() => _idx = i),

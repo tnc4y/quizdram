@@ -36,11 +36,16 @@ class AppRouter {
     BuildContext context, {
     required int correct,
     required int total,
+    required int elapsedSeconds,
   }) =>
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => QuizResultScreen(correct: correct, total: total),
+          builder: (_) => QuizResultScreen(
+            correct: correct,
+            total: total,
+            elapsedSeconds: elapsedSeconds,
+          ),
         ),
       );
 

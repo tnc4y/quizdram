@@ -6,6 +6,7 @@ import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/qz_bar.dart';
 import '../router.dart';
+import '../services/service_locator.dart';
 
 class QuizPlayScreen extends StatefulWidget {
   const QuizPlayScreen({super.key});
@@ -20,14 +21,29 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
   int _seconds = 90;
   int _correct = 0;
   Timer? _timer;
+  DateTime? _startTime;
+  List<QuizOpt> _opts = kTodayOpts;
 
   @override
   void initState() {
     super.initState();
+    _loadOpts();
     _startTimer();
   }
 
+  Future<void> _loadOpts() async {
+    try {
+      final opts = await sl.quiz.getTodayOptions();
+      if (opts.isNotEmpty && mounted) {
+        setState(() => _opts = opts);
+      }
+    } catch (_) {
+      // stay with kTodayOpts fallback
+    }
+  }
+
   void _startTimer() {
+    _startTime = DateTime.now();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() {
@@ -49,13 +65,24 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
       });
     } else {
       _timer?.cancel();
-      AppRouter.toQuizResult(context, correct: _correct, total: 5);
+      final elapsed = _startTime != null
+          ? DateTime.now().difference(_startTime!).inSeconds
+          : 0;
+      AppRouter.toQuizResult(
+        context,
+        correct: _correct,
+        total: 5,
+        elapsedSeconds: elapsed,
+      );
     }
   }
 
   void _pick(String id) {
     if (_picked != null) return;
-    final wasCorrect = kTodayOpts.firstWhere((o) => o.id == id).correct;
+    final wasCorrect = _opts.firstWhere(
+      (o) => o.id == id,
+      orElse: () => QuizOpt(id, '', '', false),
+    ).correct;
     setState(() {
       _picked = id;
       if (wasCorrect) _correct++;
@@ -180,7 +207,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
               ),
               const SizedBox(height: 16),
               // Answer options
-              ...kTodayOpts.map((o) => _OptionBtn(
+              ..._opts.map((o) => _OptionBtn(
                     option: o,
                     picked: _picked,
                     onTap: _pick,

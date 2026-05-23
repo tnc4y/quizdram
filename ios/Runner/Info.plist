@@ -66,6 +66,18 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- REVERSED_CLIENT_ID değerini GoogleService-Info.plist'ten kopyala -->
+				<string>com.googleusercontent.apps.334197118004-oefn6dogv0uk3jebo91te53bfp70tkgc</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleAlternateIcons</key>
 	<dict>
 		<key>AppIconDark</key>

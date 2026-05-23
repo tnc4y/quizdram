@@ -1,0 +1,5 @@
+import '../models/models.dart';
+
+abstract class DramaService {
+  Future<List<Drama>> getTrending({int limit = 6});
+}

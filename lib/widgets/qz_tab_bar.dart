@@ -36,12 +36,15 @@ class QzTabBar extends StatelessWidget {
       S.tabMe,
     ];
 
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final bottomPad = bottomInset > 0 ? bottomInset : 10.0;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(8, 10, 8, 14),
+          padding: EdgeInsets.fromLTRB(8, 10, 8, bottomPad),
           decoration: BoxDecoration(
             color: context.qp.card.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(28),

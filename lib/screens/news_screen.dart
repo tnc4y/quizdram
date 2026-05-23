@@ -5,6 +5,7 @@ import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
 import '../widgets/stripe_painter.dart';
+import '../services/service_locator.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -15,10 +16,29 @@ class NewsScreen extends StatefulWidget {
 
 class _NewsScreenState extends State<NewsScreen> {
   int _chip = 0;
+  late Future<List<NewsItem>> _newsFuture;
+
+  static const _categories = [null, 'trend', 'new_show', 'gossip', 'interview'];
 
   List<String> get _chips => [
     S.all, S.chipTrend, S.chipNewShow, S.chipGossip, S.chipInterview,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _newsFuture = _load();
+  }
+
+  Future<List<NewsItem>> _load() =>
+      sl.news.getNews(category: _categories[_chip]);
+
+  void _selectChip(int i) {
+    setState(() {
+      _chip = i;
+      _newsFuture = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +87,7 @@ class _NewsScreenState extends State<NewsScreen> {
                       padding:
                           EdgeInsets.only(right: i < chips.length - 1 ? 8 : 0),
                       child: GestureDetector(
-                        onTap: () => setState(() => _chip = i),
+                        onTap: () => _selectChip(i),
                         child: QzChip(chips[i], active: i == _chip),
                       ),
                     )),
@@ -75,17 +95,95 @@ class _NewsScreenState extends State<NewsScreen> {
                 }),
               ),
               const SizedBox(height: 16),
-              // Featured story card
-              _FeaturedCard(news: kNews[0]),
-              const SizedBox(height: 18),
-              // News list
-              ...kNews.skip(1).map((n) => Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: _NewsRow(news: n),
-              )),
-              const SizedBox(height: 100),
+              FutureBuilder<List<NewsItem>>(
+                future: _newsFuture,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const _NewsLoadingShimmer();
+                  }
+                  final items = snap.data ?? kNews;
+                  if (items.isEmpty) {
+                    return _EmptyNews();
+                  }
+                  return Column(
+                    children: [
+                      _FeaturedCard(news: items[0]),
+                      const SizedBox(height: 18),
+                      ...items.skip(1).map((n) => Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _NewsRow(news: n),
+                      )),
+                      const SizedBox(height: 100),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewsLoadingShimmer extends StatelessWidget {
+  const _NewsLoadingShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.qp;
+    return Column(
+      children: [
+        Container(
+          height: 220,
+          decoration: BoxDecoration(
+            color: p.card,
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        const SizedBox(height: 18),
+        ...List.generate(3, (_) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 88,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: p.card,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(height: 12, width: 60, color: p.card),
+                    const SizedBox(height: 8),
+                    Container(height: 14, color: p.card),
+                    const SizedBox(height: 4),
+                    Container(height: 14, width: double.infinity, color: p.card),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        )),
+      ],
+    );
+  }
+}
+
+class _EmptyNews extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 200,
+      child: Center(
+        child: Text(
+          'Henüz haber yok',
+          style: QT.body(14, c: context.qp.ink2),
         ),
       ),
     );

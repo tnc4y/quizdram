@@ -4,6 +4,7 @@ import '../data.dart';
 import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
+import '../services/service_locator.dart';
 
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -14,6 +15,28 @@ class LeaderboardScreen extends StatefulWidget {
 
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
   int _tab = 0;
+  late Future<List<LeaderEntry>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<List<LeaderEntry>> _load() {
+    switch (_tab) {
+      case 1: return sl.leaderboard.getAllTime();
+      case 2: return sl.leaderboard.getFriends();
+      default: return sl.leaderboard.getWeekly();
+    }
+  }
+
+  void _selectTab(int i) {
+    setState(() {
+      _tab = i;
+      _future = _load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,28 +59,41 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(children: [
                   GestureDetector(
-                      onTap: () => setState(() => _tab = 0),
+                      onTap: () => _selectTab(0),
                       child: QzChip(S.thisWeek, active: _tab == 0)),
                   const SizedBox(width: 8),
                   GestureDetector(
-                      onTap: () => setState(() => _tab = 1),
+                      onTap: () => _selectTab(1),
                       child: QzChip(S.allTime, active: _tab == 1)),
                   const SizedBox(width: 8),
                   GestureDetector(
-                      onTap: () => setState(() => _tab = 2),
+                      onTap: () => _selectTab(2),
                       child: QzChip(S.friends, active: _tab == 2)),
                 ]),
               ),
               const SizedBox(height: 18),
-              // Podium
-              _Podium(),
-              const SizedBox(height: 14),
-              // Ranked list (4+)
-              ...kLeaders.skip(3).map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: _LeaderRow(entry: e),
-              )),
-              const SizedBox(height: 100),
+              FutureBuilder<List<LeaderEntry>>(
+                future: _future,
+                builder: (context, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const _LeaderLoadingShimmer();
+                  }
+                  final entries = snap.data?.isNotEmpty == true
+                      ? snap.data!
+                      : kLeaders;
+                  return Column(
+                    children: [
+                      if (entries.length >= 3) _Podium(top3: entries.take(3).toList()),
+                      const SizedBox(height: 14),
+                      ...entries.skip(3).map((e) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: _LeaderRow(entry: e),
+                      )),
+                      const SizedBox(height: 100),
+                    ],
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -66,16 +102,48 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 }
 
-// ── Top 3 podium ────────────────────────────────────────────────
-class _Podium extends StatelessWidget {
-  static const _order = [1, 0, 2]; // #2, #1, #3 positions
-  static const _sizes = [56.0, 72.0, 56.0];
-  static const _hues = [Color(0xFF7C5ED3), Color(0xFFFF5470), Color(0xFFFFC857)];
-  static const _hanguls = ['葵', '민지', '魏'];
+class _LeaderLoadingShimmer extends StatelessWidget {
+  const _LeaderLoadingShimmer();
 
   @override
   Widget build(BuildContext context) {
-    final top3 = kLeaders.take(3).toList();
+    final p = context.qp;
+    return Column(
+      children: [
+        Container(
+          height: 180,
+          decoration: BoxDecoration(
+            color: p.card,
+            borderRadius: BorderRadius.circular(22),
+          ),
+        ),
+        const SizedBox(height: 14),
+        ...List.generate(4, (_) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: p.card,
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        )),
+      ],
+    );
+  }
+}
+
+// ── Top 3 podium ────────────────────────────────────────────────
+class _Podium extends StatelessWidget {
+  final List<LeaderEntry> top3;
+  const _Podium({required this.top3});
+
+  static const _order = [1, 0, 2]; // #2, #1, #3 positions
+  static const _sizes = [56.0, 72.0, 56.0];
+  static const _hues = [Color(0xFF7C5ED3), Color(0xFFFF5470), Color(0xFFFFC857)];
+
+  @override
+  Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: Container(
@@ -107,7 +175,7 @@ class _Podium extends StatelessWidget {
                     final entry = top3[_order[i]];
                     final size = _sizes[i];
                     final hue = _hues[i];
-                    final h = _hanguls[_order[i]];
+                    final h = entry.name.isNotEmpty ? entry.name[0].toUpperCase() : '?';
                     final isFirst = _order[i] == 0;
                     return Expanded(
                       child: Column(

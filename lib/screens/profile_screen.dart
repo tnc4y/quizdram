@@ -4,10 +4,67 @@ import '../data.dart';
 import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/qz_bar.dart';
+import '../services/service_locator.dart';
 import 'settings_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+// ── Data holder ──────────────────────────────────────────────────
+class _ProfileData {
+  final String name;
+  final int xp, xpMax, level;
+  final List<QzBadge> badges;
+  final int quizzes, accuracy, streak;
+
+  const _ProfileData({
+    required this.name,
+    required this.xp,
+    required this.xpMax,
+    required this.level,
+    required this.badges,
+    required this.quizzes,
+    required this.accuracy,
+    required this.streak,
+  });
+
+  int get earnedCount => badges.where((b) => b.earned).length;
+}
+
+Future<_ProfileData> _loadProfile() async {
+  final u = sl.user;
+  final name = await u.getDisplayName();
+  final xpData = await u.getXpProgress();
+  final badges = await u.getBadges();
+  final stats = await u.getStats();
+  return _ProfileData(
+    name: name,
+    xp: xpData.xp, xpMax: xpData.xpMax, level: xpData.level,
+    badges: badges,
+    quizzes: stats.quizzes, accuracy: stats.accuracy, streak: stats.streak,
+  );
+}
+
+_ProfileData _fallback() => _ProfileData(
+  name: 'sen',
+  xp: 21455, xpMax: 25000, level: 14,
+  badges: kBadges,
+  quizzes: 184, accuracy: 92, streak: 22,
+);
+
+// ── Screen ───────────────────────────────────────────────────────
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late Future<_ProfileData> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _loadProfile();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,61 +73,112 @@ class ProfileScreen extends StatelessWidget {
       color: p.bg,
       child: SafeArea(
         bottom: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(22, 6, 22, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: FutureBuilder<_ProfileData>(
+          future: _future,
+          builder: (context, snap) {
+            final data = snap.data ?? (snap.hasError ? _fallback() : null);
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(22, 6, 22, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(S.profile, style: QT.display(22, c: p.ink)),
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _SmallBtn(Icons.language_rounded),
-                      const SizedBox(width: 6),
-                      GestureDetector(
-                        onTap: () => Navigator.push(context,
-                            MaterialPageRoute(builder: (_) => const SettingsScreen())),
-                        child: _SmallBtn(Icons.settings_outlined),
+                      Text(S.profile, style: QT.display(22, c: p.ink)),
+                      Row(
+                        children: [
+                          _SmallBtn(Icons.language_rounded),
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () => Navigator.push(context,
+                                MaterialPageRoute(builder: (_) => const SettingsScreen())),
+                            child: _SmallBtn(Icons.settings_outlined),
+                          ),
+                        ],
                       ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+                  if (data == null)
+                    _ProfileShimmer()
+                  else ...[
+                    _IdentityCard(data: data),
+                    const SizedBox(height: 14),
+                    _StatsGrid(quizzes: data.quizzes, accuracy: data.accuracy, streak: data.streak),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(S.badges, style: QT.display(16, c: p.ink)),
+                        Text('${data.earnedCount} / ${data.badges.length}',
+                            style: QT.body(11, c: p.ink2)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _QzBadgeGrid(badges: data.badges),
+                  ],
+                  const SizedBox(height: 100),
                 ],
               ),
-              const SizedBox(height: 14),
-              // Identity card
-              _IdentityCard(),
-              const SizedBox(height: 14),
-              // Stats grid
-              _StatsGrid(),
-              const SizedBox(height: 20),
-              // QzBadges section
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(S.badges, style: QT.display(16, c: p.ink)),
-                  Text('3 / 12', style: QT.body(11, c: p.ink2)),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _QzBadgeGrid(),
-              const SizedBox(height: 100),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-// ── Identity card ────────────────────────────────────────────────
-class _IdentityCard extends StatelessWidget {
+// ── Loading shimmer ──────────────────────────────────────────────
+class _ProfileShimmer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.qp;
+    return Column(
+      children: [
+        Container(
+          height: 160,
+          decoration: BoxDecoration(
+            color: p.card,
+            borderRadius: BorderRadius.circular(22),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: List.generate(3, (i) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: i > 0 ? 8 : 0),
+              child: Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: p.card,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          )),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Identity card ────────────────────────────────────────────────
+class _IdentityCard extends StatelessWidget {
+  final _ProfileData data;
+  const _IdentityCard({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.qp;
+    final xpPct = data.xpMax > 0 ? data.xp / data.xpMax * 100 : 0.0;
+    final xpFmt = _fmtNum(data.xp);
+    final xpMaxFmt = _fmtNum(data.xpMax);
+    final initial = data.name.isNotEmpty ? data.name[0].toUpperCase() : '?';
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: Container(
@@ -90,23 +198,23 @@ class _IdentityCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    QzPhoto(hue: p.pink, label: '센', width: 76, height: 76, borderRadius: 20),
+                    QzPhoto(hue: p.pink, label: initial, width: 76, height: 76, borderRadius: 20),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('sen',
+                          Text(data.name,
                               style: QT.display(20, c: p.ink, w: FontWeight.w700, ls: -20 * 0.02)),
                           const SizedBox(height: 2),
-                          Text('K-Drama uzmanı · #4',
+                          Text('K-Drama uzmanı',
                               style: QT.body(12, c: p.ink.withValues(alpha: 0.75))),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              _LevelQzBadge('LV 14', p.pink, Colors.white),
+                              _LevelBadge('LV ${data.level}', p.pink, Colors.white),
                               const SizedBox(width: 6),
-                              _LevelQzBadge('PRO', p.gold, p.featured),
+                              _LevelBadge('PRO', p.gold, p.featured),
                             ],
                           ),
                         ],
@@ -118,15 +226,15 @@ class _IdentityCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('LV 14',
+                    Text('LV ${data.level}',
                         style: QT.body(11, c: p.ink.withValues(alpha: 0.75), w: FontWeight.w600)),
-                    Text('21,455 / 25,000 XP',
+                    Text('$xpFmt / $xpMaxFmt XP',
                         style: QT.body(11, c: p.ink.withValues(alpha: 0.75))),
                   ],
                 ),
                 const SizedBox(height: 6),
                 QzBar(
-                  value: 86,
+                  value: xpPct,
                   max: 100,
                   color: p.gold,
                   track: Colors.white.withValues(alpha: 0.15),
@@ -138,47 +246,49 @@ class _IdentityCard extends StatelessWidget {
       ),
     );
   }
+
+  String _fmtNum(int n) {
+    if (n >= 1000) {
+      final k = n ~/ 1000;
+      final r = (n % 1000) ~/ 100;
+      return r > 0 ? '${k}_$r k'.replaceAll('_', '.') : '${k}k';
+    }
+    return '$n';
+  }
 }
 
-class _LevelQzBadge extends StatelessWidget {
+class _LevelBadge extends StatelessWidget {
   final String label;
   final Color bg, fg;
-  const _LevelQzBadge(this.label, this.bg, this.fg);
+  const _LevelBadge(this.label, this.bg, this.fg);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style:
-            QT.body(10, w: FontWeight.w700, c: fg, ls: 1),
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+      child: Text(label, style: QT.body(10, w: FontWeight.w700, c: fg, ls: 1)),
     );
   }
 }
 
 // ── Stats 3-column grid ──────────────────────────────────────────
 class _StatsGrid extends StatelessWidget {
-  static const _stats = [
-    _Stat('184', 'Quiz',   Color(0xFFFF5470), '퀴즈'),
-    _Stat('92%', 'Doğru',  Color(0xFFFFC857), '정답'),
-    _Stat('22',  'Streak', Color(0xFF2D1B4E), '연속'),
-  ];
+  final int quizzes, accuracy, streak;
+  const _StatsGrid({required this.quizzes, required this.accuracy, required this.streak});
 
   @override
   Widget build(BuildContext context) {
+    final stats = [
+      _Stat('$quizzes', 'Quiz',   const Color(0xFFFF5470), '퀴즈'),
+      _Stat('$accuracy%', 'Doğru', const Color(0xFFFFC857), '정답'),
+      _Stat('$streak',  'Streak', const Color(0xFF2D1B4E), '연속'),
+    ];
     return Row(
-      children: List.generate(_stats.length, (i) => Expanded(
+      children: List.generate(stats.length, (i) => Expanded(
         child: Padding(
-          padding: EdgeInsets.only(
-            left: i > 0 ? 8 : 0,
-          ),
-          child: _StatsCard(_stats[i]),
+          padding: EdgeInsets.only(left: i > 0 ? 8 : 0),
+          child: _StatsCard(stats[i]),
         ),
       )),
     );
@@ -228,8 +338,11 @@ class _StatsCard extends StatelessWidget {
   }
 }
 
-// ── QzBadges 4-column grid ─────────────────────────────────────────
+// ── QzBadges 4-column grid ────────────────────────────────────────
 class _QzBadgeGrid extends StatelessWidget {
+  final List<QzBadge> badges;
+  const _QzBadgeGrid({required this.badges});
+
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
@@ -241,8 +354,8 @@ class _QzBadgeGrid extends StatelessWidget {
         crossAxisSpacing: 8,
         childAspectRatio: 0.8,
       ),
-      itemCount: kBadges.length,
-      itemBuilder: (_, i) => _QzBadgeCell(kBadges[i]),
+      itemCount: badges.length,
+      itemBuilder: (_, i) => _QzBadgeCell(badges[i]),
     );
   }
 }
@@ -302,6 +415,7 @@ class _QzBadgeCell extends StatelessWidget {
   }
 }
 
+// ── Small icon button ─────────────────────────────────────────────
 class _SmallBtn extends StatelessWidget {
   final IconData icon;
   const _SmallBtn(this.icon);

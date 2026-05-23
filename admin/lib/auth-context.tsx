@@ -8,6 +8,7 @@ import {
   signOut,
   type User,
 } from 'firebase/auth'
+import { getFirestore, doc, getDoc } from 'firebase/firestore'
 import { auth } from './firebase-client'
 
 interface AuthContextValue {
@@ -31,11 +32,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   async function signInWithGoogle() {
-    await signInWithPopup(auth, new GoogleAuthProvider())
+    const result = await signInWithPopup(auth, new GoogleAuthProvider())
+    const u = result.user
+
+    const db = getFirestore()
+    const snap = await getDoc(doc(db, 'users', u.uid))
+    if (!snap.exists() || snap.data()?.role !== 'admin') {
+      await signOut(auth)
+      throw new Error('Yetkisiz erişim: Bu hesabın admin rolü yok.')
+    }
+
+    const idToken = await u.getIdToken()
+    const res = await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    })
+    if (!res.ok) {
+      await signOut(auth)
+      throw new Error('Sunucu oturumu oluşturulamadı.')
+    }
   }
 
   async function logout() {
     await signOut(auth)
+    await fetch('/api/auth/session', { method: 'DELETE' })
   }
 
   return (
