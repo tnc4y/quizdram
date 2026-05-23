@@ -27,6 +27,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ];
 
   Future<void> _setIcon(String iconId) async {
+    final supported = await FlutterDynamicIcon.supportsAlternateIcons;
+    if (!supported) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uygulama ikonu değiştirme bu cihazda desteklenmiyor.')),
+        );
+      }
+      return;
+    }
     try {
       final name = iconId == 'white' ? null
                  : iconId == 'dark'  ? 'AppIconDark'
@@ -34,8 +43,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await FlutterDynamicIcon.setAlternateIconName(name);
       appIcon.value = iconId;
       setState(() {});
-    } catch (_) {
-      // Platform desteklemiyor
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('İkon değiştirilemedi: $e')),
+        );
+      }
     }
   }
 

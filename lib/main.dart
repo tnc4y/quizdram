@@ -9,6 +9,7 @@ import 'screens/onboarding_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await initPrefs();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const QuizDramApp());
 }

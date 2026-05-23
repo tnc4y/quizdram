@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'theme.dart';
 
 /// Selected app language — set once during onboarding, read everywhere.
@@ -9,6 +10,18 @@ final appPalette = ValueNotifier<String>('cream');
 
 /// Active app icon — 'white' (default) | 'dark' | 'gold'
 final appIcon = ValueNotifier<String>('white');
+
+/// Call once at startup — loads saved prefs and wires up auto-save listeners.
+Future<void> initPrefs() async {
+  final p = await SharedPreferences.getInstance();
+  appLang.value    = p.getString('lang')    ?? 'tr';
+  appPalette.value = p.getString('palette') ?? 'cream';
+  appIcon.value    = p.getString('icon')    ?? 'white';
+
+  appLang.addListener(()    => p.setString('lang',    appLang.value));
+  appPalette.addListener(() => p.setString('palette', appPalette.value));
+  appIcon.addListener(()    => p.setString('icon',    appIcon.value));
+}
 
 QzPalette get currentPalette =>
     appPalette.value == 'midnight' ? QzPalette.midnight : QzPalette.cream;
