@@ -4,20 +4,11 @@ import 'screens/shell_screen.dart';
 import 'screens/quiz_play_screen.dart';
 import 'screens/quiz_result_screen.dart';
 import 'screens/cast_profile_screen.dart';
-import 'screens/language_screen.dart';
-
 /// Central navigation hub — all Navigator calls go through here.
-/// Replace MaterialPageRoute with go_router or AutoRoute in Phase 1.
 class AppRouter {
   AppRouter._();
 
-  /// Onboarding → Language picker
-  static void toLanguage(BuildContext context) => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const LanguageScreen()),
-      );
-
-  /// Language picker → Shell (clears back-stack)
+  /// Any screen → Shell (clears back-stack)
   static void toShell(BuildContext context) =>
       Navigator.pushAndRemoveUntil(
         context,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
-import '../data.dart';
+import '../models/models.dart';
 import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
@@ -101,7 +101,10 @@ class _NewsScreenState extends State<NewsScreen> {
                   if (snap.connectionState == ConnectionState.waiting) {
                     return const _NewsLoadingShimmer();
                   }
-                  final items = snap.data ?? kNews;
+                  if (snap.hasError) {
+                    return _EmptyNews();
+                  }
+                  final items = snap.data ?? [];
                   if (items.isEmpty) {
                     return _EmptyNews();
                   }

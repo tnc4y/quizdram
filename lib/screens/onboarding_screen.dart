@@ -5,7 +5,8 @@ import '../theme.dart';
 import '../lang.dart';
 import '../widgets/stripe_painter.dart';
 import '../services/service_locator.dart';
-import 'language_screen.dart';
+import 'shell_screen.dart';
+import 'username_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -33,7 +34,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
       await FirebaseAuth.instance.signInWithCredential(credential);
       await ServiceLocator.instance.init();
-      _goNext();
+      await sl.user.ensureProfile();
+      await _goNext();
     } catch (_) {
       setState(() { _loading = false; _error = 'Google ile giriş başarısız. Tekrar dene.'; });
     }
@@ -44,17 +46,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     try {
       await FirebaseAuth.instance.signInAnonymously();
       await ServiceLocator.instance.init();
-      _goNext();
+      await sl.user.ensureProfile();
+      await _goNext();
     } catch (_) {
       setState(() { _loading = false; _error = 'Misafir girişi başarısız. Tekrar dene.'; });
     }
   }
 
-  void _goNext() {
+  Future<void> _goNext() async {
+    if (!mounted) return;
+    final hasName = await sl.user.hasUsername();
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => const LanguageScreen()),
+      MaterialPageRoute(
+        builder: (_) => hasName ? const ShellScreen() : const UsernameScreen(),
+      ),
     );
   }
 

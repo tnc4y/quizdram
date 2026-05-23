@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
-import '../data.dart';
+import '../models/models.dart';
 import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
@@ -35,8 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final dramas = results[2] as List<Drama>;
     return (
       userName: name,
-      featuredTitle: opts.isNotEmpty ? opts.first.text : 'Lunar Tide',
-      dramas: dramas.isNotEmpty ? dramas : kDramas.take(3).toList(),
+      featuredTitle: opts.isNotEmpty ? opts.first.text : S.todayQuiz,
+      dramas: dramas,
     );
   }
 
@@ -69,6 +69,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 12),
                   if (data == null)
                     _TrendingShimmer()
+                  else if (data.dramas.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text('Henüz drama yok',
+                            style: QT.body(13, c: context.qp.ink3)),
+                      ),
+                    )
                   else
                     _TrendingStrip(dramas: data.dramas),
                   const SizedBox(height: 100),

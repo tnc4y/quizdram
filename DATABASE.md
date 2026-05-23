@@ -41,9 +41,11 @@ Flutter modeli: `Drama` (`lib/models/models.dart`)
 | `hue` | string | `Drama.hue` (Color) | Hex renk, örn. `"#FF5470"` — UI aksan rengi |
 | `posterUrl` | string | — | Firebase Storage URL — drama posteri |
 | `backdropUrl` | string | — | Firebase Storage URL — geniş arka plan görseli |
-| `synopsis` | string | — | Türkçe özet |
+| `synopsis` | string | — | Korece özet (TMDB'den gelen ana dil) |
 | `synopsisEn` | string | — | İngilizce özet |
-| `synopsisKo` | string | — | Korece özet |
+| `synopsisKo` | string | — | Korece özet (synopsis ile aynı, açık alan) |
+| `synopsisTr` | string | — | Türkçe özet |
+| `translations` | map | — | `{ "tr": { "title": "…", "synopsis": "…" }, "en": {…}, "ja": {…}, … }` — TMDB'den otomatik doldurulur; desteklenen diller: `tr en ko ja zh fr de es pt ar ru it hi id vi th pl nl` |
 | `streamingPlatforms` | string[] | — | `["Netflix","Viki","WeTVv"]` |
 | `tmdbId` | number | — | TMDB import referansı |
 | `kmdbId` | string | — | KMDB import referansı (Kore yapımları) |
@@ -70,15 +72,30 @@ Flutter modeli: `CastMember` (`lib/models/models.dart`)
 | `photoUrl` | string | — | Firebase Storage URL — profil fotoğrafı |
 | `birthDate` | string | — | `"YYYY-MM-DD"` formatı |
 | `nationality` | string | — | `"KR"` · `"CN"` · `"JP"` · `"TH"` (ISO 3166) |
-| `bio` | string | — | Türkçe biyografi |
-| `bioEn` | string | — | İngilizce biyografi |
+| `bio` | string | — | Biyografi (TMDB İngilizce varsayılan) |
+| `bioEn` | string | — | İngilizce biyografi (admin düzenleyebilir) |
 | `bioKo` | string | — | Korece biyografi |
-| `dramaIds` | string[] | — | Oynadığı drama ID'leri |
+| `bioTranslations` | map | — | `{ "tr": "Türkçe bio…", "ja": "日本語bio…", … }` — TMDB'den otomatik |
+| `dramaIds` | string[] | — | **Firestore'a import edilmiş** drama ID'leri |
+| `tmdbCredits` | TmdbCredit[] | — | TMDB'deki **tüm** TV dizi görünümleri (import edilmemiş diziler dahil) — bkz. alt tablo |
 | `instagram` | string | — | Instagram kullanıcı adı (@'siz) |
 | `tmdbPersonId` | number | — | TMDB kişi import referansı |
 | `status` | string | — | `draft` · `review` · `published` |
 | `createdAt` | timestamp | — | Oluşturma zamanı |
 | `updatedAt` | timestamp | — | Son güncelleme zamanı |
+
+### `tmdbCredits[]` — TMDB TV Kredileri Alt Dizisi
+
+Drama import edildiğinde her cast üyesi için `/person/{id}/tv_credits` çekilir ve tüm dizi görünümleri burada saklanır. `dramaIds` yalnızca Firestore'a aktarılmış dizileri tutar; `tmdbCredits` henüz import edilmemiş dizileri de kapsar.
+
+| Alan | Tip | Açıklama |
+|---|---|---|
+| `tmdbId` | number | TMDB dizi ID'si |
+| `title` | string | Dizi gösterim başlığı |
+| `titleOriginal` | string? | Orijinal başlık (farklıysa) |
+| `year` | number? | İlk yayın yılı |
+| `character` | string? | Oynadığı karakter adı |
+| `posterPath` | string? | TMDB ham poster path (`/abc.jpg`) — önizleme için |
 
 ---
 
@@ -90,8 +107,9 @@ quiz paketi modeli henüz Flutter'da tam değil. Tam yapı aşağıdadır.
 | Alan | Tip | Flutter | Açıklama |
 |---|---|---|---|
 | `id` | string | — | Firestore doküman ID'si |
-| `title` | string | — | Paketin başlığı |
+| `title` | string | — | Paketin başlığı (fallback EN) |
 | `titleKo` | string | — | Başlık, Korece/asıl dil |
+| `titleTranslations` | map | — | `{ "tr": "Squid Game Testi", "en": "Squid Game Quiz", … }` |
 | `dramaId` | string | — | İlgili `dramas/{dramaId}` |
 | `region` | string | — | `kr` · `cn` · `jp` · `th` |
 | `difficulty` | string | — | `easy` · `medium` · `hard` |
@@ -107,25 +125,46 @@ quiz paketi modeli henüz Flutter'da tam değil. Tam yapı aşağıdadır.
 
 ### `questions[]` — Gömülü Dizi
 
+Sorular iki modda çalışır: **`template`** ve **`custom`**.
+
 | Alan | Tip | Flutter | Açıklama |
 |---|---|---|---|
 | `id` | string | `QuizOpt.id` | Soru ID'si |
-| `text` | string | `QuizOpt.text` | Soru metni (varsayılan dil) |
-| `textEn` | string | — | İngilizce soru metni |
-| `textKo` | string | — | Korece soru metni |
-| `options` | QuizOption[] | — | Şık listesi — bkz. alt tablo |
-| `correctId` | string | `QuizOpt.correct` (bool) | Doğru şıkkın ID'si |
+| `type` | string | — | `template` · `custom` |
+| `templateKey` | string | — | Yalnızca `type=template`. Olası değerler ↓ |
+| `params` | map | — | Yalnızca `type=template`. Örn. `{ "castId": "…", "dramaId": "…" }` |
+| `text` | string | `QuizOpt.text` | Yalnızca `type=custom`. Fallback soru metni (EN) |
+| `translations` | map | — | Yalnızca `type=custom`. `{ "tr": { "text": "…", "hint": "…", "options": […] }, "ko": {…} }` |
+| `options` | QuizOption[] | — | `type=template`'de boş; Flutter runtime'da DB'den oluşturur |
+| `correctId` | string | `QuizOpt.correct` | Doğru şıkkın ID'si (template'de referans entity ID'si) |
 | `difficulty` | string | — | `easy` · `medium` · `hard` |
-| `hint` | string | — | İpucu metni (ipucu sistemi için) |
+| `hint` | string | — | Fallback ipucu metni (EN) |
+| `imageUrl` | string | — | Görsel gerektiren sorular için (örn. `cast_photo_who_is_this`) |
 | `order` | number | — | Soru sırası |
+
+#### `templateKey` değerleri
+
+| templateKey | Soru kalıbı | Gerekli params |
+|---|---|---|
+| `which_drama_for_character` | "{karakter} hangi dizide oynuyor?" | `castId`, `dramaId` |
+| `which_character_in_drama` | "{dizi} dizisinin başrolü kim?" | `dramaId`, `castId` |
+| `drama_release_year` | "{dizi} kaç yılında yayınlandı?" | `dramaId` |
+| `cast_photo_who_is_this` | "Bu kişi kim?" (`imageUrl` dolu olur) | `castId` |
+| `which_region_is_drama` | "{dizi} hangi ülke yapımı?" | `dramaId` |
+| `how_many_episodes` | "{dizi} kaç bölümdür?" | `dramaId` |
+| `drama_genre` | "{dizi} hangi türde?" | `dramaId` |
+
+> **Flutter davranışı:** `templateKey` + `params` ile uygulama lokalize soru metnini kendi
+> içinde üretir (çeviri JSON'ından), yanlış şıkları DB'den dinamik çeker.
 
 ### `options[]` — Şık Alt Dizisi
 
 | Alan | Tip | Flutter | Açıklama |
 |---|---|---|---|
 | `id` | string | — | Şık ID'si, örn. `"a"` · `"b"` · `"c"` · `"d"` |
-| `text` | string | `QuizOpt.text` | Şık metni |
+| `text` | string | `QuizOpt.text` | Fallback şık metni (EN) |
 | `sub` | string | `QuizOpt.sub` | Alt bilgi, örn. `"달의 조류 · 2024"` |
+| `translations` | map | — | `{ "tr": { "text": "…", "sub": "…" }, "ko": {…} }` |
 
 ---
 
@@ -252,12 +291,17 @@ ekleyebilir (Faz 2 rozet sistemi için).
 ## Güvenlik Kuralları (Özet)
 
 ```
-users/{uid}         → okuma: sahibi veya admin · yazma: sahibi (role hariç) veya admin
+users/{uid}         → okuma: sahibi veya admin
+                    → yazma: sahibi (yalnızca displayName/avatarUrl/lang) veya admin
 dramas, cast, news  → okuma: herkes · yazma: admin veya editor
 quizPacks           → okuma: herkes · yazma: admin veya editor
 results/{resultId}  → okuma: sahibi veya admin · yazma: Cloud Function (istemci yazamaz)
 leaderboard         → okuma: herkes · yazma: Cloud Function
 ```
+
+> **Not:** `users/{uid}.role` alanı Firestore Security Rules ile korunur — kullanıcı
+> kendi dokümanını güncellerken `role`, `xp`, `level`, `streak`, `badges`, `bannedAt`
+> alanlarına dokunamaz. Bkz. DATABASE.md'deki kural örneği.
 
 ---
 

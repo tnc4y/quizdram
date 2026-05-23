@@ -15,9 +15,9 @@ class FirebaseUserService implements UserService {
 
   @override
   Future<String> getDisplayName() async {
-    if (uid == null) return 'Misafir';
+    if (uid == null) return '';
     final snap = await _userDoc.get();
-    return snap.data()?['displayName'] as String? ?? 'Misafir';
+    return snap.data()?['displayName'] as String? ?? '';
   }
 
   @override
@@ -52,13 +52,28 @@ class FirebaseUserService implements UserService {
     );
   }
 
+  /// Kullanıcı Firestore'da kayıtlı ve displayName dolu mu?
+  Future<bool> hasUsername() async {
+    if (uid == null) return false;
+    final snap = await _userDoc.get();
+    final name = snap.data()?['displayName'] as String? ?? '';
+    return name.trim().isNotEmpty;
+  }
+
+  /// Kullanıcı adını Firestore'a kaydet.
+  Future<void> saveUsername(String name) async {
+    if (uid == null) return;
+    await _userDoc.set({'displayName': name.trim()}, SetOptions(merge: true));
+  }
+
+  /// Firestore dokümanı yoksa oluştur (displayName boş bırakılır — username ekranı dolduracak).
   Future<void> ensureProfile() async {
     if (uid == null) return;
     final snap = await _userDoc.get();
     if (!snap.exists) {
       await _userDoc.set({
         'uid': uid,
-        'displayName': 'Misafir',
+        'displayName': '',
         'role': 'user',
         'xp': 0,
         'level': 1,

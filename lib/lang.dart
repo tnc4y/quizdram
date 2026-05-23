@@ -2,8 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'theme.dart';
 
-/// Selected app language — set once during onboarding, read everywhere.
-final appLang = ValueNotifier<String>('tr');
+const _supportedLangs = ['tr', 'en', 'ko', 'ja', 'zh'];
+
+String _systemLang() {
+  final code = PlatformDispatcher.instance.locale.languageCode;
+  return _supportedLangs.contains(code) ? code : 'en';
+}
+
+/// Selected app language — auto-detected from system on first launch.
+final appLang = ValueNotifier<String>('en');
 
 /// Active color palette — 'cream' | 'midnight'
 final appPalette = ValueNotifier<String>('cream');
@@ -14,7 +21,7 @@ final appIcon = ValueNotifier<String>('white');
 /// Call once at startup — loads saved prefs and wires up auto-save listeners.
 Future<void> initPrefs() async {
   final p = await SharedPreferences.getInstance();
-  appLang.value    = p.getString('lang')    ?? 'tr';
+  appLang.value    = p.getString('lang')    ?? _systemLang();
   appPalette.value = p.getString('palette') ?? 'cream';
   appIcon.value    = p.getString('icon')    ?? 'white';
 

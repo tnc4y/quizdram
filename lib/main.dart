@@ -7,6 +7,7 @@ import 'theme.dart';
 import 'lang.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/shell_screen.dart';
+import 'screens/username_screen.dart';
 import 'services/service_locator.dart';
 
 void main() async {
@@ -19,7 +20,8 @@ void main() async {
   final user = FirebaseAuth.instance.currentUser;
   if (user != null) {
     await ServiceLocator.instance.init();
-    home = const ShellScreen();
+    final hasName = await ServiceLocator.instance.user.hasUsername();
+    home = hasName ? const ShellScreen() : const UsernameScreen();
   } else {
     home = const OnboardingScreen();
   }

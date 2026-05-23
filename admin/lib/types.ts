@@ -22,12 +22,25 @@ export interface Drama {
   synopsis?: string
   synopsisEn?: string
   synopsisKo?: string
+  synopsisTr?: string
+  // { 'tr': { title: '...', synopsis: '...' }, 'en': { ... }, 'ja': { ... }, ... }
+  translations?: Record<string, { title?: string; synopsis?: string }>
   streamingPlatforms?: string[]
   tmdbId?: number
   kmdbId?: string
   status: Status
   createdAt?: FirebaseFirestore.Timestamp
   updatedAt?: FirebaseFirestore.Timestamp
+}
+
+// TMDB'den gelen TV kredisi (henüz import edilmemiş diziler dahil)
+export interface TmdbCredit {
+  tmdbId: number
+  title: string           // Gösterim başlığı (asıl dil)
+  titleOriginal?: string  // Orijinal başlık (farklıysa)
+  year?: number           // İlk yayın yılı
+  character?: string      // Oynadığı karakter adı
+  posterPath?: string     // '/abc.jpg' — önizleme için TMDB raw path
 }
 
 // cast/{castId} — Flutter: CastMember
@@ -43,10 +56,14 @@ export interface CastMember {
   photoUrl?: string
   birthDate?: string      // 'YYYY-MM-DD'
   nationality?: string    // ISO 3166-1 alpha-2
-  bio?: string
+  bio?: string            // Biyografi (İngilizce / TMDB varsayılan)
   bioEn?: string
   bioKo?: string
-  dramaIds?: string[]
+  // { 'tr': 'Türkçe bio...', 'ja': '日本語bio...', ... }
+  bioTranslations?: Record<string, string>
+  dramaIds?: string[]     // Firestore'a import edilmiş drama ID'leri
+  // TMDB'deki tüm TV kredileri — henüz import edilmemiş diziler dahil
+  tmdbCredits?: TmdbCredit[]
   instagram?: string
   tmdbPersonId?: number
   status: Status
@@ -54,22 +71,65 @@ export interface CastMember {
   updatedAt?: FirebaseFirestore.Timestamp
 }
 
-// quizPacks/{packId} — Flutter: QuizOpt (kısmi)
+// quizPacks/{packId}
+
+// Şablon soru tipleri — Flutter uygulamasında metni çevrilir, parametreler DB'den gelir
+export type QuizTemplateKey =
+  | 'which_drama_for_character'   // "{character} hangi dizide oynuyor?"
+  | 'which_character_in_drama'    // "{drama} dizisinin başrolü kim?"
+  | 'drama_release_year'          // "{drama} kaç yılında yayınlandı?"
+  | 'cast_photo_who_is_this'      // "Bu kişi kim?"
+  | 'which_region_is_drama'       // "{drama} hangi ülke yapımı?"
+  | 'how_many_episodes'           // "{drama} kaç bölümdür?"
+  | 'drama_genre'                 // "{drama} hangi türde?"
+
+// Şablon soru parametreleri — key'e göre hangi params alanlarının dolu olacağı
+export interface QuizTemplateParams {
+  dramaId?: string
+  castId?: string
+  // Gelecekte genişletilebilir
+  [key: string]: string | undefined
+}
+
+// Seçenek çevirisi — custom sorularda her dil için ayrı option metni
+export interface QuizOptionTranslation {
+  text: string
+  sub?: string
+}
+
+// Flutter: QuizOpt
 export interface QuizOption {
   id: string
-  text: string            // QuizOpt.text
-  sub: string             // QuizOpt.sub
+  text: string                    // QuizOpt.text — fallback (EN)
+  sub?: string                    // QuizOpt.sub — kısa açıklama/ipucu
+  // { 'tr': { text: '...', sub: '...' }, 'ko': { ... }, ... }
+  translations?: Record<string, QuizOptionTranslation>
 }
 
 export interface QuizQuestion {
   id: string
-  text: string
-  textEn?: string
-  textKo?: string
+  type: 'template' | 'custom'
+
+  // --- Template sorular ---
+  templateKey?: QuizTemplateKey
+  params?: QuizTemplateParams
+  // Template'de options boş bırakılır; Flutter runtime'da DB'den oluşturur
+  // correctId template için referans ID (örn. doğru dramaId/castId)
+
+  // --- Custom sorular ---
+  text: string                    // fallback metin (EN)
+  // { 'tr': { text: '...', options: [...] }, 'ko': { ... }, ... }
+  translations?: Record<string, {
+    text: string
+    hint?: string
+    options?: QuizOptionTranslation[]
+  }>
+
   options: QuizOption[]
-  correctId: string       // QuizOpt.correct → doğru şıkkın id'si
+  correctId: string               // QuizOpt.correct → doğru şıkkın id'si
   difficulty?: 'easy' | 'medium' | 'hard'
-  hint?: string
+  hint?: string                   // fallback hint (EN)
+  imageUrl?: string               // cast_photo_who_is_this gibi görselli soru tipleri için
   order: number
 }
 
@@ -77,6 +137,8 @@ export interface QuizPack {
   id: string
   title: string
   titleKo?: string
+  // { 'tr': 'Türkçe başlık', 'en': 'English title', ... }
+  titleTranslations?: Record<string, string>
   dramaId: string
   region: Region
   difficulty: 'easy' | 'medium' | 'hard'

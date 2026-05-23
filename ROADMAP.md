@@ -1,10 +1,15 @@
 # Quizdram — Ürün & Teknik Yol Haritası
 
-## Mevcut Durum — MVP Prototipi (Mayıs 2025)
+## Mevcut Durum — Backend Entegrasyon Aşaması (Mayıs 2026)
 
-Statik Flutter prototipi, tam UI ile: onboarding, quiz oyun/sonuç, cast profilleri,
-dergi akışı, liderboard ve kullanıcı profili. Tüm veriler hard-coded mock data.
-`ValueNotifier` üzerinden çok dil desteği (TR / EN / KO).
+Flutter UI büyük ölçüde tamamlandı (onboarding, quiz oyun/sonuç, cast profilleri,
+dergi akışı, liderboard, kullanıcı profili). `ValueNotifier` ile TR / EN / KO çoklu dil.
+
+**Tamamlanan önemli adımlar:**
+- Firebase servisleri Flutter'a eklendi (`firebase_quiz_service`, `firebase_user_service`, `firebase_news_service`, `firebase_leaderboard_service`, `service_locator`)
+- Admin Paneli (Next.js 16) temel modülleri çalışır durumda — bkz. aşağıda
+- `dramas` şeması 18 dilli `translations` map'i ile güncellendi (TMDB'den otomatik)
+- Quiz soruları `template` / `custom` iki modlu sisteme tasarlandı (DATABASE.md)
 
 ---
 
@@ -19,7 +24,7 @@ dergi akışı, liderboard ve kullanıcı profili. Tüm veriler hard-coded mock 
 | **Medya Depolama** | Firebase Storage | Cast fotoğrafları, drama posterleri |
 | **Push Bildirimler** | Firebase Cloud Messaging (FCM) | Seri hatırlatmaları, yeni quiz uyarıları |
 | **Sunucu Mantığı** | Cloud Functions (Node.js / Dart) | Skor doğrulama, hile önleme, zamanlanmış quiz rotasyonu |
-| **Admin Paneli** | Next.js 15 + Firebase Admin SDK | Drama/cast import, quiz & haber editörü — aşağıda detaylı |
+| **Admin Paneli** | Next.js 16 + Firebase Admin SDK | Drama/cast import, quiz & haber editörü — aşağıda detaylı |
 | **Analitik** | Firebase Analytics + Mixpanel | Huni takibi, quiz terk analizi |
 
 ### Veri Modeli (Firestore Koleksiyonları)
@@ -30,209 +35,205 @@ Koleksiyonlar: `dramas` · `cast` · `quizPacks` · `results` · `news` · `user
 
 ### Admin Paneli Mimarisi
 
-Quizdram Admin, ayrı bir **Next.js** uygulamasıdır (`admin/` klasörü, Flutter'dan bağımsız).
-Sadece yetkili editörler erişir (Firebase Auth ile rol kontrolü: `role == 'admin'`).
+Quizdram Admin, ayrı bir **Next.js 16** uygulamasıdır (`admin/` klasörü, Flutter'dan bağımsız).
+Sadece yetkili editörler erişir (Firebase Auth + Firestore `role == 'admin'` kontrolü + HttpOnly session cookie).
 Aynı Firebase projesini paylaşır; TMDB ile sadece bu panel konuşur.
 
-**Stack:** Next.js 15 (App Router) · TypeScript · Tailwind CSS · Firebase Admin SDK (server-side) · shadcn/ui bileşenleri
+**Stack:** Next.js 16 (App Router, Turbopack) · TypeScript · Tailwind CSS v4 · Firebase Admin SDK (server-side)
 
-TMDB API çağrıları ve fotoğraf indirme işlemleri Next.js **Route Handler**'larında sunucu tarafında çalışır — TMDB anahtarı hiçbir zaman tarayıcıya gitmez.
+TMDB API çağrıları ve fotoğraf indirme işlemleri Next.js **Route Handler**'larında / **Server Action**'larda sunucu tarafında çalışır — TMDB anahtarı hiçbir zaman tarayıcıya gitmez.
 
-#### Temel Modüller
+#### Temel Modüller — Durum
 
-**1. Drama & Cast İçe Aktarma**
-- TMDB ID gir → Route Handler drama meta verilerini, cast listesini ve fotoğrafları çeker
-- Fotoğraflar sunucudan Firebase Storage'a kopyalanır (`cast/{castId}/photo.jpg`, `dramas/{dramaId}/poster.jpg`) — mobil uygulama TMDB'yi hiç bilmez
-- Eksik veya hatalı alanlar import sonrası formdan elle düzenlenir
-- KMDB opsiyonel: Kore yapımları için ek bilgi (ödüller, yönetmen notu)
+**1. Auth & Güvenlik** ✅
+- Google sign-in → Firestore `role` kontrolü → Firebase `createSessionCookie`
+- `proxy.ts` ile tüm dashboard route'ları HttpOnly session cookie ile korunuyor
+- Firestore Security Rules: kullanıcı kendi `role`/`xp`/`streak` alanlarına dokunamaz
 
-**2. Quiz Paketi Editörü**
+**2. Drama & Cast İçe Aktarma** ✅
+- TMDB ID → `/api/tmdb/drama` route'u: drama meta verisi + cast listesi (18 dilde `translations` map'i dahil)
+- Poster/cast fotoğrafları sunucudan Firebase Storage'a kopyalanıyor (`adminStorage` direkt, HTTP round-trip yok)
+- `/dramas` sayfası: server component tablo + client TMDB import modal + server action kayıt
+
+**3. Quiz Paketi Editörü** 🔜
 - Drama seç → quiz paketi oluştur
-- Soru / şık / doğru cevap / zorluk girişi (sürükle-bırak sıralama)
+- `type: template` sorular: `templateKey + params` — metin uygulamada üretilir, DB'ye yazılmaz
+- `type: custom` sorular: `translations` map ile her dile çeviri girişi
 - Taslak → İncelemede → Yayında durum akışı
-- Yayın tarihi zamanlaması (örn. yeni sezon çıkışına denk getir)
+- Yayın tarihi zamanlaması
 
-**3. Dergi & Haber Editörü**
-- Başlık, etiket (Trend / Yeni Dizi / Dedikodu / Röportaj), kapak görseli
+**4. Dergi & Haber Editörü** 🔜
+- Başlık, etiket, kapak görseli
 - Zengin metin editörü (Tiptap / BlockNote)
-- TR / EN / KO ayrı içerik alanları
-- Haber kaynağı bağlantısı (Soompi, Koreaboo vb. için referans)
+- `translations` map ile çok dilli içerik
+- Haber kaynağı bağlantısı
 
-**4. Kullanıcı Yönetimi**
+**5. Kullanıcı Yönetimi** 🔜
 - Kullanıcı arama, XP / rozet manuel ayarı
-- Şikâyet / ban işlemleri (Firebase Admin SDK ile server-side)
+- Şikâyet / ban (Firebase Admin SDK ile server-side)
 
-**5. İçerik Takip Panosu**
+**6. İçerik Takip Panosu** 🔜
 - Toplam drama / cast / quiz / haber sayısı
-- Onay bekleyen taslaklar
-- Haftalık aktif kullanıcı ve quiz oynanma sayısı
+- Onay bekleyen taslaklar, haftalık istatistikler
 
 #### Veri Akışı
 
 ```
-Admin Panel (Next.js — Route Handlers, sunucu tarafı)
+Admin Panel (Next.js 16 — Route Handlers + Server Actions, sunucu tarafı)
   └─ TMDB API ──► fotoğraf indir ──► Firebase Storage
-  └─ TMDB API ──► metadata       ──► Firestore (dramas/, cast/)
-  └─ Elle giriş ──────────────────► Firestore (quizPacks/, news/)
+  └─ TMDB API ──► metadata + 18 dil translations ──► Firestore (dramas/, cast/)
+  └─ Elle giriş ──────────────────────────────────► Firestore (quizPacks/, news/)
 
 Mobil Uygulama (Flutter — TMDB'yi tanımaz)
-  └─ Firestore'dan okur
+  └─ Firestore'dan okur (drama.translations[userLang])
   └─ Firebase Storage'dan görsel çeker
 ```
 
-#### Firestore Koleksiyon Genişletmesi
+#### Çok Dilli Veri Stratejisi
 
-```
-dramas/{dramaId}
-  title, titleKo, titleEn
-  region (KR/CN/JP/TH), year, episodes
-  posterUrl, backdropUrl        ← Storage URL
-  tmdbId, kmdbId                ← import kaynağı referansı
-  genres[], streamingPlatforms[]
-  status (draft | published)
-
-cast/{castId}
-  name, nameKo, birthYear
-  photoUrl                      ← Storage URL
-  bio, bioEn, bioKo
-  dramaIds[]                    ← oynadığı diziler
-  tmdbPersonId
-  status (draft | published)
-```
+| İçerik | Strateji |
+|---|---|
+| Drama başlık / özet | TMDB `/translations` endpoint → `translations: { "tr": {…}, "en": {…}, … }` otomatik |
+| Quiz paketi başlığı | `titleTranslations` map — admin elle girer |
+| Template quiz soruları | Uygulama içi çeviri JSON'u — DB'ye metin yazılmaz |
+| Custom quiz soruları | `translations` map — admin her dili girer |
+| Haber içeriği | `translations` map — admin her dili girer |
 
 ---
 
-### Servis Katmanı (`lib/services/` içinde zaten iskelet hazır)
+### Servis Katmanı (`lib/services/` — Flutter)
 
-`lib/services/` içindeki her soyut sınıf bir Firestore koleksiyonuna bire bir karşılık gelir.
-Backend'e bağlanmak için somut `FirebaseQuizService`, `FirebaseUserService` vb. sınıflar oluştur
-ve bunları üst düzey bir provider ile enjekte et (`provider` veya `riverpod` paketi kullan).
+`lib/services/` içindeki Firebase implementasyonları eklendi:
+- `firebase_quiz_service.dart` — Firestore `quizPacks` okuma
+- `firebase_user_service.dart` — kullanıcı profili okuma/yazma
+- `firebase_news_service.dart` — `news` koleksiyonu okuma
+- `firebase_leaderboard_service.dart` — `leaderboard` dinleyici
+- `service_locator.dart` — servis enjeksiyonu
 
 ---
 
-## Faz 0 — Temel Altyapı (Haziran 2025)
+## Faz 0 — Temel Altyapı (Mayıs–Haziran 2026)
 
 **Hedef:** Mock datayı gerçek backend ile değiştir + Admin Paneli ile ilk içeriği yükle.
 
 ### Mobil Uygulama
-- [ ] `pubspec.yaml`'a `firebase_core`, `firebase_auth`, `cloud_firestore` ekle
-- [ ] `lib/services/quiz_service.dart`'tan `FirebaseQuizService` uygula
-- [ ] `lib/services/user_service.dart`'tan `FirebaseUserService` uygula
-- [ ] `lib/services/news_service.dart`'tan `FirebaseNewsService` uygula
+- [x] `pubspec.yaml`'a Firebase paketleri eklendi (`firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `firebase_analytics`)
+- [x] Firebase servis sınıfları oluşturuldu (`FirebaseQuizService`, `FirebaseUserService`, `FirebaseNewsService`, `FirebaseLeaderboardService`)
+- [x] `service_locator.dart` ile servis enjeksiyonu
+- [ ] Mock data → Firebase servislerine geçiş (ekranlar bağlanacak)
 - [ ] İlk açılışta anonim auth ekle (zorla kayıt yok)
-- [ ] Derin bağlantı hazırlığı için `Navigator` çağrılarını `go_router` ile değiştir
+- [ ] `Navigator` → `go_router` geçişi (derin bağlantı hazırlığı)
 - [ ] XP/seviye sistemi: her doğru cevap +250 XP, seviye eşikleri
-- [ ] Token kalıcılığı için `flutter_secure_storage` ekle
+- [ ] `flutter_secure_storage` token kalıcılığı
 
-### Admin Paneli (`admin/` — Next.js)
-- [ ] `admin/` klasöründe Next.js 15 projesi oluştur (`npx create-next-app`)
-- [ ] Firebase Admin SDK + servis hesabı yapılandırması (sunucu tarafı)
-- [ ] Firebase Auth ile admin rol kontrolü (`users/{uid}.role == 'admin'`)
-- [ ] TMDB Route Handler: drama ID → meta veri + cast çekimi (TMDB anahtarı sunucuda)
-- [ ] Fotoğraf Route Handler: TMDB CDN'den indir → Firebase Storage'a yükle
-- [ ] Drama & cast düzenleme formu (import sonrası eksik alanlar)
-- [ ] Quiz paketi editörü (soru/şık/cevap girişi, sürükle-bırak)
-- [ ] Haber editörü (Tiptap, başlık, etiket, görsel, TR/EN/KO içerik)
-- [ ] İlk 5 drama ve cast verisi admin panelden yüklenir (Lunar Tide, Neon Seoul…)
+### Admin Paneli (`admin/` — Next.js 16)
+- [x] Next.js 16 projesi kuruldu (App Router, Turbopack)
+- [x] Firebase Admin SDK + servis hesabı yapılandırması
+- [x] Google Auth + Firestore `role == 'admin'` kontrolü
+- [x] `proxy.ts` ile session cookie tabanlı route koruması
+- [x] Sol sidebar + dashboard layout
+- [x] TMDB Route Handler: drama + cast + 18 dil çevirisi
+- [x] Fotoğraf Storage Route Handler
+- [x] TMDB import modal + drama tablosu (`/dramas`)
+- [ ] Drama düzenleme formu (import sonrası eksik alanlar: hue, tr başlık vb.)
+- [ ] Quiz paketi editörü (template + custom soru, sürükle-bırak sıralama)
+- [ ] Haber editörü (Tiptap, `translations` map girişi)
+- [ ] İlk 5 drama ve cast yüklenmesi (Squid Game, Goblin, My Love from the Star…)
 
-**Kilometre taşı:** Uygulama gerçek veriyle uçtan uca çalışır, içerik admin panelden yönetilir — TestFlight / iç iz.
+**Kilometre taşı:** Uygulama gerçek veriyle uçtan uca çalışır, içerik admin panelden yönetilir.
 
 ---
 
-## Faz 1 — Temel Ürün (Q3 2025)
+## Faz 1 — Temel Ürün (Q3 2026)
 
 **Hedef:** Yayına hazır quiz motoru + içerik boru hattı.
 
 ### Quiz Motoru
 - [ ] 4 bölgede 10+ quiz paketi (KR / CN / JP / TH)
-- [ ] Quiz paketi detay ekranı (kapak, zorluk, oyun sayısı, oluşturucu)
-- [ ] Zamanlı puanlama formülü: daha hızlı cevaplar bonus XP kazandırır
+- [ ] Template soru tipleri Flutter'da implemente edildi (7 şablon — DATABASE.md)
+- [ ] Quiz paketi detay ekranı (kapak, zorluk, oyun sayısı)
+- [ ] Zamanlı puanlama: hızlı cevaplara bonus XP
 - [ ] İpucu sistemi: 50 XP harca, bir yanlış seçeneği gizle
-- [ ] Günlük quiz rotasyonu (Cloud Function zamanlanmış tetikleyici, 00:00 UTC)
-- [ ] Çevrimdışı oyun: bugünkü quiz paketini yerel olarak önbelleğe al
+- [ ] Günlük quiz rotasyonu (Cloud Function, 00:00 UTC)
+- [ ] Çevrimdışı oyun: bugünkü paketi yerel önbellek
 
 ### Hesap & Profil
 - [ ] Sosyal giriş: Google + Apple
-- [ ] Kullanıcı adı, avatar seçimi (hazır hangul karakter avatarları)
-- [ ] Profil paylaşım kartı (ekran görüntüsüne uygun, Instagram hikayelerine paylaşılabilir)
-- [ ] Push bildirim: "22 günlük serinin tehlikede 🔥" (FCM)
+- [ ] Kullanıcı adı, avatar seçimi (hangul karakter avatarları)
+- [ ] Profil paylaşım kartı (Instagram hikayelerine uyumlu)
+- [ ] Push bildirim: seri hatırlatması (FCM)
 
 ### İçerik
-- [ ] Admin paneli: taslak → incelemede → yayında durum akışı
-- [ ] Admin paneli: yayın tarihi zamanlaması (yeni sezon çıkışına denk getirme)
-- [ ] Admin paneli: zengin metin editörü (Flutter Quill) ile haber makalesi yazımı
+- [ ] Taslak → İncelemede → Yayında durum akışı (admin paneli)
+- [ ] Yayın tarihi zamanlaması
+- [ ] Zengin metin editörü ile haber yazımı
 - [ ] Kategorili dergi akışı: Trend, Yeni Dizi, Dedikodu, Röportaj
-- [ ] Arama: dramalar, cast üyeleri, quiz paketleri
+- [ ] Arama: dramalar, cast, quiz paketleri
+
+### Dil Genişlemesi
+- [ ] JA (Japonca) çevirileri `lib/lang.dart`'a ekle → aç
+- [ ] ZH (Basitleştirilmiş Çince) çevirileri ekle → aç
 
 ### Teknik
-- [ ] Hata raporlama: Firebase Crashlytics
+- [ ] Firebase Crashlytics
 - [ ] CI/CD: GitHub Actions → TestFlight + Play Store iç iz
 
 ---
 
-## Faz 2 — Bağlılık & Sosyal (Q4 2025)
+## Faz 2 — Bağlılık & Sosyal (Q4 2026)
 
-**Hedef:** Kullanıcıları her gün geri getir ve arkadaşlarını da çek.
+**Hedef:** Kullanıcıları her gün geri getir, arkadaşlarını da çek.
 
 ### Liderboard 2.0
 - [ ] Gerçek zamanlı haftalık liderboard (Firestore canlı dinleyici)
-- [ ] Arkadaş liderboardu: kullanıcıları takip et / takipten çık
+- [ ] Arkadaş liderboardu: takip et / takipten çık
 - [ ] Ülke bazlı bölgesel sıralamalar
-- [ ] Liderboard animasyonu (sıra atlama konfetisi)
+- [ ] Sıra atlama animasyonu (konfeti)
 
 ### Sosyal
 - [ ] Haber makalelerinde yorum dizileri
-- [ ] Skor + seri ile quiz sonuç paylaşım kartı
-- [ ] "Arkadaşına meydan oku" — belirli quiz paketini derin bağlantı ile gönder
-- [ ] Kullanıcı akışı: arkadaşların son oynadığı quizleri gör
+- [ ] Quiz sonuç paylaşım kartı (skor + seri)
+- [ ] "Arkadaşına meydan oku" — derin bağlantı ile paket gönder
+- [ ] Arkadaş akışı: son oynanan quizleri gör
 
 ### Oyunlaştırma
-- [ ] Rozet sistemi (12 rozet, sunucu doğrulamalı): K-Uzman, Hız Aşırtı, Mükemmel Skor…
-- [ ] Seri dondurma: seriyi korumak için 100 XP harca
-- [ ] Haftalık meydan okuma: bonus XP çarpanlı temalı quiz paketi
+- [ ] Rozet sistemi (12 rozet, sunucu doğrulamalı)
+- [ ] Seri dondurma: 100 XP harca, seriyi koru
+- [ ] Haftalık meydan okuma: bonus XP çarpanlı temalı paket
 - [ ] Sezonluk etkinlikler: K-Drama Ödülleri Haftası, Çin Yeni Yılı paketi
+
+### Dil Genişlemesi
+- [ ] TH (Tayca) — büyük BL drama kitlesi
 
 ---
 
-## Faz 3 — Canlı & 1v1 (Q1 2026)
+## Faz 3 — Canlı & 1v1 (Q1 2027)
 
 **Hedef:** Rakiplerden ayrışmak için gerçek zamanlı çok oyunculu mod.
 
-- [ ] **1v1 Düello modu**: WebSocket eşleşme (Firebase Realtime DB veya Supabase Realtime)
+- [ ] **1v1 Düello modu**: Firebase Realtime DB WebSocket eşleşme
   - İki oyuncuyu aynı quiz paketinde eş zamanlı eşleştir
-  - Her iki oyuncuya da görünen canlı skor göstergesi
-  - Kazanan 2× XP alır, Düello Puanı kazanır
-- [ ] **Canlı Quiz Etkinlikleri**: oluşturucu bir paketi yayınlar, binlerce kişi eş zamanlı cevaplar
-  - Drama temalı Kahoot benzeri deneyim
+  - Her iki oyuncuya görünen canlı skor göstergesi
+  - Kazanan 2× XP + Düello Puanı
+- [ ] **Canlı Quiz Etkinlikleri**: host bir paketi yayınlar, binlerce kişi eş zamanlı cevaplar
   - Host kontrol paneli (admin web uygulaması)
-- [ ] Düello liderboardu, Düello Rütbe rozet sistemi (Bronz → Elmas)
+- [ ] Düello liderboardu + Bronz → Elmas rütbe sistemi
 
 ---
 
-## Faz 4 — Monetizasyon (Q2 2026)
+## Faz 4 — Monetizasyon (Q2 2027)
 
 **Hedef:** Kazan-kazan olmayan sürdürülebilir gelir.
 
 | Özellik | Model |
 |---|---|
-| **Quizdram PRO** | ₺79/ay abonelik — reklamsız, yeni paketlere erken erişim, özel rozet çerçeveleri |
-| **İpucu Paketleri** | 10 ipucu ₺19 (aksi takdirde XP ile kazanılır) |
+| **Quizdram PRO** | ₺79/ay — reklamsız, yeni paketlere erken erişim, özel rozet çerçeveleri |
+| **İpucu Paketleri** | 10 ipucu ₺19 (XP ile de kazanılır) |
 | **Avatar Çerçeveleri** | Kozmetik sezonluk çerçeveler: ₺9 adet |
-| **Sponsorlu Paketler** | Drama stüdyoları cast fotoğraflı resmi quiz paketlerini sponsor eder |
-| **Marka Ortaklıkları** | K-güzellik / moda markaları liderboard sponsoru olur |
+| **Sponsorlu Paketler** | Drama stüdyoları resmi quiz paketlerini sponsor eder |
+| **Marka Ortaklıkları** | K-güzellik / moda markaları liderboard sponsoru |
 
-**Not:** Temel quiz oyunu her zaman ücretsiz kalmalıdır. Monetizasyon güç kullanıcıları hedefler.
-
----
-
-## Dil Genişlemesi
-
-Şu anda aktif: **TR, EN, KO**
-`kLangs`'ta mevcut ama henüz çevrilmemiş: **JA, ZH**
-
-- [ ] Faz 1: `lib/lang.dart`'a Japonca çeviriler ekle → JA'yı aç
-- [ ] Faz 1: Basitleştirilmiş Çince çeviriler ekle → ZH'yi aç
-- [ ] Faz 2: Tayca (TH) — büyük BL drama kitlesi
+**Not:** Temel quiz oyunu her zaman ücretsiz kalmalıdır.
 
 ---
 
@@ -242,8 +243,8 @@ ve bunları üst düzey bir provider ile enjekte et (`provider` veya `riverpod` 
 - Cast vs Cast karşılaştırma ekranı
 - "Hangi drama karakterisin?" kişilik quiz formatı
 - Birlikte izleme entegrasyonu (eş zamanlı izleme + canlı quiz)
-- Mod araçları: topluluk tarafından gönderilen quiz paketleri (inceleme kuyruğu)
-- Masaüstü oyuncular için herkese açık web sürümü (Flutter Web — admin panelinden ayrı)
+- Topluluk tarafından gönderilen quiz paketleri (moderasyon kuyruğu)
+- Herkese açık web sürümü (Flutter Web — admin panelinden ayrı)
 - iPad / tablet düzeni
 
 ---

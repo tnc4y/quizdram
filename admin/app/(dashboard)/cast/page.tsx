@@ -1,13 +1,21 @@
-export default function CastPage() {
+import { adminDb } from '@/lib/firebase-admin'
+import type { CastMember } from '@/lib/types'
+import { CastTable } from './cast-table'
+
+async function getCast(): Promise<CastMember[]> {
+  const snap = await adminDb.collection('cast').orderBy('createdAt', 'desc').get()
+  return snap.docs.map((d) => d.data() as CastMember)
+}
+
+export default async function CastPage() {
+  const cast = await getCast()
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Cast</h1>
-        <button className="px-4 py-2 bg-zinc-900 text-white text-sm font-medium rounded-lg hover:bg-zinc-700 transition-colors">
-          + TMDB'den içe aktar
-        </button>
+        <span className="text-sm text-zinc-400">{cast.length} oyuncu</span>
       </div>
-      <p className="text-sm text-zinc-400">Yakında — cast listesi ve fotoğraf yönetimi burada.</p>
+      <CastTable cast={cast} />
     </div>
   )
 }

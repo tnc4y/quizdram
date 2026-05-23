@@ -8,17 +8,17 @@ class FirebaseNewsService implements NewsService {
 
   @override
   Future<List<NewsItem>> getNews({String? category}) async {
-    Query<Map<String, dynamic>> q = _db
-        .collection('news')
-        .where('status', isEqualTo: 'published')
-        .orderBy('publishedAt', descending: true)
-        .limit(20);
+    Query<Map<String, dynamic>> q =
+        _db.collection('news').where('status', isEqualTo: 'published');
 
     if (category != null) {
       q = q.where('category', isEqualTo: category);
     }
 
-    final snap = await q.get();
+    final snap = await q
+        .orderBy('publishedAt', descending: true)
+        .limit(20)
+        .get();
     return snap.docs.map(_fromDoc).toList();
   }
 

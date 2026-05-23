@@ -12,16 +12,20 @@ class FirebaseQuizService implements QuizService {
         .collection('quizPacks')
         .where('status', isEqualTo: 'published')
         .orderBy('publishedAt', descending: true)
-        .limit(6)
+        .limit(1)
         .get();
 
-    return snap.docs.map((doc) {
-      final d = doc.data();
+    if (snap.docs.isEmpty) return [];
+
+    final d = snap.docs.first.data();
+    final rawOpts = d['options'] as List<dynamic>? ?? [];
+    return rawOpts.map((o) {
+      final opt = o as Map<String, dynamic>;
       return QuizOpt(
-        doc.id,
-        d['title'] as String? ?? '',
-        d['difficulty'] as String? ?? '',
-        false,
+        opt['id'] as String? ?? '',
+        opt['text'] as String? ?? '',
+        opt['sub'] as String? ?? '',
+        opt['correct'] as bool? ?? false,
       );
     }).toList();
   }

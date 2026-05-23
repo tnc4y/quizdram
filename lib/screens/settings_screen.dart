@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dynamic_icon/flutter_dynamic_icon.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme.dart';
 import '../lang.dart';
+import '../data.dart';
+import 'onboarding_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -263,6 +266,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 28),
 
+          // ── Dil ───────────────────────────────────────────────
+          _SectionHeader('Dil', p),
+          const SizedBox(height: 10),
+          ValueListenableBuilder<String>(
+            valueListenable: appLang,
+            builder: (context, lang, _) {
+              final rows = <Widget>[];
+              for (var i = 0; i < kLangs.length; i++) {
+                final l = kLangs[i];
+                final active = lang == l.code;
+                rows.add(GestureDetector(
+                  onTap: () => appLang.value = l.code,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: active ? p.pink : p.sand,
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(l.glyph,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: active ? p.bg : p.ink2,
+                              )),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(l.label,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: p.ink)),
+                              Text(l.native,
+                                  style: TextStyle(fontSize: 11, color: p.ink2)),
+                            ],
+                          ),
+                        ),
+                        if (active)
+                          Icon(Icons.check_rounded, color: p.pink, size: 18),
+                      ],
+                    ),
+                  ),
+                ));
+                if (i < kLangs.length - 1) {
+                  rows.add(Divider(height: 1, color: p.line));
+                }
+              }
+              return _SettingsCard(p, children: rows);
+            },
+          ),
+
+          const SizedBox(height: 28),
+
           // ── Hesap ─────────────────────────────────────────────
           _SectionHeader('Hesap', p),
           const SizedBox(height: 10),
@@ -291,7 +356,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Çıkış
           GestureDetector(
-            onTap: () {},
+            onTap: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                  (_) => false,
+                );
+              }
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
