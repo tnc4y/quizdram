@@ -17,11 +17,23 @@ async function getData(id: string) {
     pack: JSON.parse(JSON.stringify(packSnap.data())),
     dramas: dramasSnap.docs.map((d) => {
       const data = d.data()
-      return { id: d.id, title: (data.titleEn || data.titleKo || data.title) as string, region: data.region as string }
+      return {
+        id: d.id,
+        title: (data.titleEn || data.titleKo || data.title) as string,
+        titleKo: (data.titleKo || '') as string,
+        region: (data.region || 'kr') as string,
+        posterUrl: (data.posterUrl || '') as string,
+        backdropUrl: (data.backdropUrl || '') as string,
+      }
     }),
     castList: castSnap.docs.map((d) => {
       const data = d.data()
-      return { id: d.id, name: (data.nameEn || data.nameKo || data.name) as string, photoUrl: data.photoUrl as string | undefined }
+      return {
+        id: d.id,
+        name: (data.nameEn || data.name) as string,
+        nameKo: (data.nameKo || '') as string,
+        photoUrl: (data.photoUrl || '') as string,
+      }
     }),
     groups: groupsSnap.docs.map((d) => JSON.parse(JSON.stringify(d.data())) as QuizGroup),
   }

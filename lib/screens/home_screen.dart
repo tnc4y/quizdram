@@ -27,15 +27,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<({String userName, String featuredTitle, List<Drama> dramas})> _load() async {
     final results = await Future.wait([
       sl.user.getDisplayName(),
-      sl.quiz.getTodayOptions(),
       sl.drama.getTrending(limit: 5),
     ]);
     final name = results[0] as String;
-    final opts = results[1] as List<QuizOpt>;
-    final dramas = results[2] as List<Drama>;
+    final dramas = results[1] as List<Drama>;
     return (
       userName: name,
-      featuredTitle: opts.isNotEmpty ? opts.first.text : S.todayQuiz,
+      featuredTitle: S.todayQuiz,
       dramas: dramas,
     );
   }

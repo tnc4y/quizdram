@@ -8,8 +8,8 @@ import { deleteQuestion, reorderQuestions, updateQuizPack } from '../actions'
 import { QuestionEditor } from './question-editor'
 import { ChevronLeft, Pencil, Trash2, ChevronUp, ChevronDown, Plus } from 'lucide-react'
 
-interface DramaItem { id: string; title: string; region: string }
-interface CastItem { id: string; name: string; photoUrl?: string }
+interface DramaItem { id: string; title: string; titleKo: string; region: string; posterUrl: string; backdropUrl: string }
+interface CastItem { id: string; name: string; nameKo: string; photoUrl: string }
 
 interface Pack {
   id: string

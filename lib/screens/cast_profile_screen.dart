@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
-import '../data.dart';
+import '../models/models.dart';
 import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/stripe_painter.dart';
 import '../router.dart';
+import '../services/service_locator.dart';
 
 class CastProfileScreen extends StatefulWidget {
-  final CastMember? member;
-  const CastProfileScreen({super.key, this.member});
+  final CastMember member;
+  const CastProfileScreen({super.key, required this.member});
 
   @override
   State<CastProfileScreen> createState() => _CastProfileScreenState();
@@ -19,7 +20,7 @@ class _CastProfileScreenState extends State<CastProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cast = widget.member ?? kCast[0];
+    final cast = widget.member;
 
     return Material(
       color: context.qp.bg,
@@ -308,61 +309,103 @@ class _Tab extends StatelessWidget {
 }
 
 // ── Filmography list ─────────────────────────────────────────────
-class _Filmography extends StatelessWidget {
+class _Filmography extends StatefulWidget {
   final CastMember cast;
-  static const _films = [
-    (title: 'Lunar Tide',     year: 2024, role: 'Lead',       hue: Color(0xFFFF5470), h: '달'),
-    (title: 'Crimson Letter', year: 2023, role: 'Lead',       hue: Color(0xFF2D1B4E), h: '진'),
-    (title: 'Glass Mountain', year: 2022, role: 'Supporting', hue: Color(0xFFFFC857), h: '유'),
-  ];
   const _Filmography({required this.cast});
 
   @override
+  State<_Filmography> createState() => _FilmographyState();
+}
+
+class _FilmographyState extends State<_Filmography> {
+  late Future<List<Drama>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = sl.cast.getDramasForCast(widget.cast.dramaIds);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: _films.map((f) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: context.qp.card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: context.qp.line),
-          ),
-          child: Row(
-            children: [
-              QzPhoto(hue: f.hue, label: f.h, width: 62, height: 78, borderRadius: 10),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return FutureBuilder<List<Drama>>(
+      future: _future,
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return Column(
+            children: List.generate(2, (_) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                height: 98,
+                decoration: BoxDecoration(
+                  color: context.qp.card,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            )),
+          );
+        }
+        final dramas = snap.data ?? [];
+        if (dramas.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(S.comingSoon, style: QT.body(13, c: context.qp.ink3)),
+            ),
+          );
+        }
+        return Column(
+          children: dramas.map((d) {
+            final label = d.hangul.isNotEmpty ? d.hangul[0] : d.title[0];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: context.qp.card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: context.qp.line),
+                ),
+                child: Row(
                   children: [
-                    Text(f.title, style: QT.display(14, c: context.qp.ink, w: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text('${f.year} · ${f.role}', style: QT.body(11, c: context.qp.ink2)),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: context.qp.sand,
-                            borderRadius: BorderRadius.circular(6),
+                    QzPhoto(hue: d.hue, label: label, width: 62, height: 78, borderRadius: 10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(d.title,
+                              style: QT.display(14, c: context.qp.ink, w: FontWeight.w600)),
+                          const SizedBox(height: 2),
+                          Text('${d.year} · ${d.genre}',
+                              style: QT.body(11, c: context.qp.ink2)),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Container(
+                                width: 22,
+                                height: 22,
+                                decoration: BoxDecoration(
+                                  color: context.qp.sand,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(Icons.play_arrow_rounded,
+                                    color: context.qp.pink, size: 14),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(S.playQuiz16, style: QT.body(11, c: context.qp.ink2)),
+                            ],
                           ),
-                          child: Icon(Icons.play_arrow_rounded, color: context.qp.pink, size: 14),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(S.playQuiz16, style: QT.body(11, c: context.qp.ink2)),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-      )).toList(),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }

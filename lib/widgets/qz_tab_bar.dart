@@ -12,7 +12,7 @@ class QzTabBar extends StatelessWidget {
 
   static const _icons = [
     Icons.home_outlined,
-    Icons.play_circle_outline_rounded,
+    Icons.people_outline_rounded,
     Icons.article_outlined,
     Icons.emoji_events_outlined,
     Icons.person_outline_rounded,
@@ -20,7 +20,7 @@ class QzTabBar extends StatelessWidget {
 
   static const _iconsActive = [
     Icons.home_rounded,
-    Icons.play_circle_rounded,
+    Icons.people_rounded,
     Icons.article_rounded,
     Icons.emoji_events_rounded,
     Icons.person_rounded,
@@ -30,7 +30,7 @@ class QzTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final labels = [
       S.tabHome,
-      S.tabQuiz,
+      S.tabCast,
       S.tabNews,
       S.tabRank,
       S.tabMe,

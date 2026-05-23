@@ -67,7 +67,7 @@ abstract class S {
 
   // Tab bar
   static String get tabHome        => t('Anasayfa', 'Home',        '홈');
-  static String get tabQuiz        => t('Quiz',     'Quiz',        '퀴즈');
+  static String get tabCast        => t('Oyuncular', 'Actors',     '배우');
   static String get tabNews        => t('Magazin',  'Magazine',    '매거진');
   static String get tabRank        => t('Liderlik', 'Leaderboard', '순위');
   static String get tabMe          => t('Profil',   'Profile',     '프로필');

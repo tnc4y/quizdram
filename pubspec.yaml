@@ -49,6 +49,12 @@ dependencies:
   # Persistence
   shared_preferences: ^2.3.2
 
+  # Audio playback (quiz ses soruları)
+  audioplayers: ^6.1.0
+
+  # Network images with cache
+  cached_network_image: ^3.4.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

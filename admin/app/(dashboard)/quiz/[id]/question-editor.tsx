@@ -4,9 +4,11 @@ import { useState, useRef, useTransition } from 'react'
 import type { QuizQuestion, QuizOption, QuizTemplateKey, OptionStyle, QuizGroup } from '@/lib/types'
 import { saveQuestion } from '../actions'
 import { Plus, Trash2, Volume2 } from 'lucide-react'
+import { SearchableSelect } from './searchable-select'
+import { ImagePicker, type ImageSource } from './image-picker'
 
-interface DramaItem { id: string; title: string; region: string }
-interface CastItem { id: string; name: string; photoUrl?: string }
+interface DramaItem { id: string; title: string; titleKo: string; region: string; posterUrl: string; backdropUrl: string }
+interface CastItem { id: string; name: string; nameKo: string; photoUrl: string }
 
 interface Props {
   packId: string
@@ -22,14 +24,16 @@ interface Props {
 type QType = 'template' | 'group_template' | 'custom' | 'audio'
 
 const TEMPLATE_KEYS: { key: QuizTemplateKey; label: string; param: 'drama' | 'cast' }[] = [
-  { key: 'which_drama_for_character',  label: 'Karakter hangi dizide?',     param: 'cast' },
-  { key: 'which_character_in_drama',   label: 'Dizinin başrolü kim?',        param: 'drama' },
+  { key: 'which_drama_for_character',  label: 'Karakter hangi dizide?',      param: 'cast' },
+  { key: 'which_character_in_drama',   label: 'Dizinin başrolü kim?',         param: 'drama' },
   { key: 'drama_release_year',         label: 'Dizi kaç yılında yayınlandı?', param: 'drama' },
-  { key: 'cast_photo_who_is_this',     label: 'Bu kişi kim? (fotoğraf)',     param: 'cast' },
-  { key: 'which_region_is_drama',      label: 'Dizi hangi ülke yapımı?',     param: 'drama' },
-  { key: 'how_many_episodes',          label: 'Dizi kaç bölüm?',             param: 'drama' },
-  { key: 'drama_genre',               label: 'Dizinin türü nedir?',          param: 'drama' },
+  { key: 'cast_photo_who_is_this',     label: 'Bu kişi kim? (fotoğraf)',      param: 'cast' },
+  { key: 'which_region_is_drama',      label: 'Dizi hangi ülke yapımı?',      param: 'drama' },
+  { key: 'how_many_episodes',          label: 'Dizi kaç bölüm?',              param: 'drama' },
+  { key: 'drama_genre',                label: 'Dizinin türü nedir?',           param: 'drama' },
 ]
+
+const REGION_FLAG: Record<string, string> = { kr: '🇰🇷', cn: '🇨🇳', jp: '🇯🇵', th: '🇹🇭', us: '🇺🇸' }
 
 interface OptionState {
   id: string
@@ -56,7 +60,9 @@ async function uploadFile(file: File, path: string): Promise<string | undefined>
   return (await res.json()).url as string
 }
 
-export function QuestionEditor({ packId, question, questionCount, dramas, castList, groups, onSaved, onClose }: Props) {
+export function QuestionEditor({
+  packId, question, questionCount, dramas, castList, groups, onSaved, onClose,
+}: Props) {
   const [qtype, setQtype] = useState<QType>(question?.type ?? 'custom')
   const [templateKey, setTemplateKey] = useState<QuizTemplateKey | ''>(question?.templateKey ?? '')
   const [paramDramaId, setParamDramaId] = useState(question?.params?.dramaId ?? '')
@@ -85,7 +91,6 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
   const [qImageUrl, setQImageUrl] = useState(question?.imageUrl ?? '')
   const [qImageFile, setQImageFile] = useState<File | null>(null)
   const [qImagePreview, setQImagePreview] = useState<string | null>(question?.imageUrl ?? null)
-  const qImageRef = useRef<HTMLInputElement>(null)
 
   // Audio
   const [audioUrl, setAudioUrl] = useState(question?.audioUrl ?? '')
@@ -102,8 +107,48 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
   const needsDrama = selectedTemplateKey?.param === 'drama'
   const needsCast = selectedTemplateKey?.param === 'cast'
 
+  // ── Derived image sources for pickers ─────────────────────────
+
+  const castImageSources: ImageSource[] = castList
+    .filter((c) => c.photoUrl)
+    .map((c) => ({ id: c.id, label: c.name, sub: c.nameKo, imageUrl: c.photoUrl }))
+
+  const dramaImageSources: ImageSource[] = dramas
+    .flatMap((d) => {
+      const items: ImageSource[] = []
+      if (d.posterUrl) items.push({ id: `${d.id}_poster`, label: d.title, sub: d.region, imageUrl: d.posterUrl })
+      if (d.backdropUrl) items.push({ id: `${d.id}_backdrop`, label: `${d.title} (sahne)`, sub: d.region, imageUrl: d.backdropUrl })
+      return items
+    })
+
+  // ── SearchableSelect items ─────────────────────────────────────
+
+  const dramaSelectItems = dramas.map((d) => ({
+    id: d.id,
+    label: d.title,
+    sub: d.titleKo || undefined,
+    badge: REGION_FLAG[d.region],
+    imageUrl: d.posterUrl || undefined,
+  }))
+
+  const castSelectItems = castList.map((c) => ({
+    id: c.id,
+    label: c.name,
+    sub: c.nameKo || undefined,
+    imageUrl: c.photoUrl || undefined,
+  }))
+
+  const groupSelectItems = groups.map((g) => ({
+    id: g.id,
+    label: g.name,
+    sub: g.description,
+    badge: `${g.itemIds.length} öğe`,
+  }))
+
+  // ── Handlers ──────────────────────────────────────────────────
+
   function updateOption(id: string, field: keyof OptionState, value: string | boolean | File | null) {
-    setOptions((prev) => prev.map((o) => o.id === id ? { ...o, [field]: value } : o))
+    setOptions((prev) => prev.map((o) => (o.id === id ? { ...o, [field]: value } : o)))
   }
 
   function setCorrect(id: string) {
@@ -125,16 +170,18 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
     })
   }
 
-  function handleOptionImage(id: string, file: File) {
-    updateOption(id, 'imageFile', file)
-    updateOption(id, 'imagePreview', URL.createObjectURL(file))
+  function handleOptionImage(optId: string, url: string, file?: File) {
+    setOptions((prev) => prev.map((o) =>
+      o.id === optId
+        ? { ...o, imageUrl: file ? '' : url, imageFile: file ?? null, imagePreview: url || null }
+        : o
+    ))
   }
 
-  function handleQImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setQImageFile(file)
-    setQImagePreview(URL.createObjectURL(file))
+  function handleQImage(url: string, file?: File) {
+    setQImageUrl(file ? '' : url)
+    setQImageFile(file ?? null)
+    setQImagePreview(url || null)
   }
 
   function handleAudio(e: React.ChangeEvent<HTMLInputElement>) {
@@ -143,6 +190,8 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
     setAudioFile(file)
     setAudioName(file.name)
   }
+
+  // ── Validation ────────────────────────────────────────────────
 
   function validate(): string | null {
     if (qtype === 'template') {
@@ -161,6 +210,8 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
     }
     return null
   }
+
+  // ── Save ──────────────────────────────────────────────────────
 
   function handleSave() {
     const err = validate()
@@ -220,12 +271,12 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
 
         ...((qtype === 'custom' || qtype === 'audio') && {
           ...(textEn ? { text: textEn } : {}),
-          ...(textTr || textKo ? {
+          ...((textTr || textKo) && {
             translations: {
               ...(textTr ? { tr: { text: textTr } } : {}),
               ...(textKo ? { ko: { text: textKo } } : {}),
-            }
-          } : {}),
+            },
+          }),
           optionStyle,
           options: finalOptions,
           correctId: options.find((o) => o.correct)?.id ?? '',
@@ -241,7 +292,7 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
   }
 
   const inputCls = 'w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-zinc-900 bg-white placeholder:text-zinc-400'
-  const labelCls = 'block text-xs font-medium text-zinc-500 mb-1'
+  const labelCls = 'block text-xs font-medium text-zinc-500 mb-1.5'
   const showOptions = qtype === 'custom' || qtype === 'audio'
 
   return (
@@ -295,30 +346,42 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
               {qtype === 'template' && needsDrama && (
                 <div>
                   <label className={labelCls}>Drama</label>
-                  <select className={inputCls} value={paramDramaId} onChange={(e) => setParamDramaId(e.target.value)}>
-                    <option value="">— Drama seç —</option>
-                    {dramas.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
-                  </select>
+                  <SearchableSelect
+                    items={dramaSelectItems}
+                    value={paramDramaId}
+                    onChange={setParamDramaId}
+                    placeholder="— Drama seç —"
+                    emptyLabel="— Drama seç —"
+                    searchPlaceholder="Drama ara... (Türkçe veya Korece)"
+                  />
                 </div>
               )}
 
               {qtype === 'template' && needsCast && (
                 <div>
                   <label className={labelCls}>Oyuncu</label>
-                  <select className={inputCls} value={paramCastId} onChange={(e) => setParamCastId(e.target.value)}>
-                    <option value="">— Oyuncu seç —</option>
-                    {castList.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <SearchableSelect
+                    items={castSelectItems}
+                    value={paramCastId}
+                    onChange={setParamCastId}
+                    placeholder="— Oyuncu seç —"
+                    emptyLabel="— Oyuncu seç —"
+                    searchPlaceholder="Oyuncu ara... (İngilizce veya Korece)"
+                  />
                 </div>
               )}
 
               {qtype === 'group_template' && (
                 <div>
                   <label className={labelCls}>Grup</label>
-                  <select className={inputCls} value={paramGroupId} onChange={(e) => setParamGroupId(e.target.value)}>
-                    <option value="">— Grup seç —</option>
-                    {groups.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.itemIds.length} öğe)</option>)}
-                  </select>
+                  <SearchableSelect
+                    items={groupSelectItems}
+                    value={paramGroupId}
+                    onChange={setParamGroupId}
+                    placeholder="— Grup seç —"
+                    emptyLabel="— Grup seç —"
+                    searchPlaceholder="Grup ara..."
+                  />
                   {groups.length === 0 && (
                     <p className="text-xs text-zinc-400 mt-1">Henüz grup yok. Önce Gruplar sayfasından bir grup oluşturun.</p>
                   )}
@@ -353,8 +416,8 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
 
               {/* Question text */}
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className={labelCls.replace('mb-1', '')}>Soru Metni</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-medium text-zinc-500">Soru Metni</label>
                   <div className="flex gap-1">
                     {(['en', 'tr', 'ko'] as const).map((l) => (
                       <button
@@ -375,19 +438,12 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
               {/* Question image */}
               <div>
                 <label className={labelCls}>Soru Görseli (isteğe bağlı)</label>
-                <div
-                  className="flex items-center gap-3 rounded-lg border border-zinc-200 overflow-hidden cursor-pointer hover:border-zinc-400 transition-colors"
-                  onClick={() => qImageRef.current?.click()}
-                >
-                  {qImagePreview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={qImagePreview} alt="" className="w-16 h-16 object-cover flex-shrink-0" />
-                  ) : (
-                    <div className="w-16 h-16 bg-zinc-100 flex items-center justify-center text-zinc-300 flex-shrink-0 text-xl">🖼️</div>
-                  )}
-                  <span className="text-sm text-zinc-500 px-3">{qImagePreview ? 'Değiştir' : 'Görsel ekle...'}</span>
-                </div>
-                <input ref={qImageRef} type="file" accept="image/*" className="hidden" onChange={handleQImage} />
+                <ImagePicker
+                  preview={qImagePreview}
+                  castSources={castImageSources}
+                  dramaSources={dramaImageSources}
+                  onChange={handleQImage}
+                />
               </div>
 
               {/* Option style */}
@@ -454,12 +510,15 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
                         )}
                       </div>
 
-                      {/* Option image upload (poster or text+image) */}
+                      {/* Option image (poster or text+image) */}
                       {(optionStyle === 'poster' || optionStyle === 'text+image') && (
-                        <div className="px-3 pb-3">
-                          <OptionImageUpload
+                        <div className="px-3 pb-3 border-t border-zinc-100 pt-2">
+                          <ImagePicker
                             preview={opt.imagePreview}
-                            onChange={(file) => handleOptionImage(opt.id, file)}
+                            castSources={castImageSources}
+                            dramaSources={dramaImageSources}
+                            aspectRatio={optionStyle === 'poster' ? 'portrait' : 'square'}
+                            onChange={(url, file) => handleOptionImage(opt.id, url, file)}
                           />
                         </div>
                       )}
@@ -477,13 +536,17 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
             </>
           )}
 
-          {/* Common: difficulty + hint */}
+          {/* Difficulty + hint */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Zorluk</label>
               <div className="flex gap-2">
                 {(['easy', 'medium', 'hard'] as const).map((d) => (
-                  <button key={d} onClick={() => setDifficulty(d)} className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${difficulty === d ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'}`}>
+                  <button
+                    key={d}
+                    onClick={() => setDifficulty(d)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${difficulty === d ? 'bg-zinc-900 text-white border-zinc-900' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400'}`}
+                  >
                     {d === 'easy' ? 'Kolay' : d === 'medium' ? 'Orta' : 'Zor'}
                   </button>
                 ))}
@@ -512,27 +575,6 @@ export function QuestionEditor({ packId, question, questionCount, dramas, castLi
           </button>
         </div>
       </div>
-    </div>
-  )
-}
-
-// ── Option image upload helper ─────────────────────────────────────────────
-
-function OptionImageUpload({ preview, onChange }: { preview: string | null; onChange: (f: File) => void }) {
-  const ref = useRef<HTMLInputElement>(null)
-  return (
-    <div
-      className="flex items-center gap-2 rounded-lg border border-dashed border-zinc-300 p-2 cursor-pointer hover:border-zinc-500 transition-colors"
-      onClick={() => ref.current?.click()}
-    >
-      {preview ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={preview} alt="" className="w-12 h-16 object-cover rounded" />
-      ) : (
-        <div className="w-12 h-16 bg-zinc-100 rounded flex items-center justify-center text-zinc-300 text-lg">🖼️</div>
-      )}
-      <span className="text-xs text-zinc-400">{preview ? 'Değiştir' : 'Görsel seç...'}</span>
-      <input ref={ref} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onChange(f) }} />
     </div>
   )
 }

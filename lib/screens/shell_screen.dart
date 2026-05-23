@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme.dart';
 import '../widgets/qz_tab_bar.dart';
 import 'home_screen.dart';
-import 'cast_profile_screen.dart';
+import 'cast_list_screen.dart';
 import 'news_screen.dart';
 import 'leaderboard_screen.dart';
 import 'profile_screen.dart';
@@ -19,7 +19,7 @@ class _ShellScreenState extends State<ShellScreen> {
 
   static const _screens = [
     HomeScreen(),
-    CastProfileScreen(),
+    CastListScreen(),
     NewsScreen(),
     LeaderboardScreen(),
     ProfileScreen(),

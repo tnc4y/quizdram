@@ -158,7 +158,7 @@ Mobil Uygulama (Flutter — TMDB'yi tanımaz)
 - [ ] Çevrimdışı oyun: bugünkü paketi yerel önbellek
 
 ### Hesap & Profil
-- [ ] Sosyal giriş: Google + Apple
+- [x] Sosyal giriş: Google + Apple
 - [ ] Kullanıcı adı, avatar seçimi (hangul karakter avatarları)
 - [ ] Profil paylaşım kartı (Instagram hikayelerine uyumlu)
 - [ ] Push bildirim: seri hatırlatması (FCM)

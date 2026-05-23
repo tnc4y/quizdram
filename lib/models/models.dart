@@ -20,15 +20,40 @@ class CastMember {
   final String id, name, hangul, region, role;
   final int age;
   final Color hue;
+  final String? photoUrl;
+  final List<String> dramaIds;
   const CastMember(this.id, this.name, this.hangul, this.region,
-      this.role, this.age, this.hue);
+      this.role, this.age, this.hue,
+      {this.photoUrl, this.dramaIds = const []});
 }
 
 // ── Quiz ───────────────────────────────────────────────────────
+enum OptionStyle { text, poster, textImage }
+
 class QuizOpt {
   final String id, text, sub;
   final bool correct;
-  const QuizOpt(this.id, this.text, this.sub, this.correct);
+  final String? imageUrl;
+  const QuizOpt(this.id, this.text, this.sub, this.correct, {this.imageUrl});
+}
+
+class QuizQuestion {
+  final String id;
+  final String text;
+  final String? imageUrl;
+  final String? audioUrl;
+  final OptionStyle optionStyle;
+  final List<QuizOpt> options;
+  final String? hint;
+  const QuizQuestion({
+    required this.id,
+    required this.text,
+    required this.options,
+    this.imageUrl,
+    this.audioUrl,
+    this.optionStyle = OptionStyle.text,
+    this.hint,
+  });
 }
 
 // ── News ───────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ class QzPhoto extends StatelessWidget {
   final double width;
   final double height;
   final double borderRadius;
+  final String? photoUrl;
 
   const QzPhoto({
     super.key,
@@ -18,6 +19,7 @@ class QzPhoto extends StatelessWidget {
     required this.width,
     required this.height,
     this.borderRadius = 18,
+    this.photoUrl,
   });
 
   @override
@@ -31,7 +33,7 @@ class QzPhoto extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Base gradient
+            // Base gradient (always rendered as fallback)
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -41,6 +43,13 @@ class QzPhoto extends StatelessWidget {
                 ),
               ),
             ),
+            // Network image overlay
+            if (photoUrl != null && photoUrl!.isNotEmpty)
+              Image.network(
+                photoUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, e, stack) => const SizedBox.shrink(),
+              ),
             // Diagonal stripe overlay
             CustomPaint(
               painter: StripePainter(
