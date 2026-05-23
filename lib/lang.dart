@@ -67,6 +67,7 @@ abstract class S {
 
   // Tab bar
   static String get tabHome        => t('Anasayfa', 'Home',        '홈');
+  static String get tabQuiz        => t('Quiz',     'Quiz',        '퀴즈');
   static String get tabCast        => t('Oyuncular', 'Actors',     '배우');
   static String get tabNews        => t('Magazin',  'Magazine',    '매거진');
   static String get tabRank        => t('Liderlik', 'Leaderboard', '순위');
@@ -120,6 +121,10 @@ abstract class S {
   static String get nextQuiz       => t('Sıradaki quiz', 'Next quiz', '다음 퀴즈');
   static String get shareResult    => t('Sonucu paylaş', 'Share result', '결과 공유');
   static String get backToHome     => t('Ana ekrana dön', 'Back to home', '홈으로 돌아가기');
+
+  // Cast list
+  static String get searchCast     => t('Oyuncu ara…', 'Search actors…', '배우 검색…');
+  static String get noResults      => t('Sonuç bulunamadı', 'No results', '결과 없음');
 
   // Cast profile
   static String get filmography    => t('Filmografi', 'Filmography', '필모그래피');

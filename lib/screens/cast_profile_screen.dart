@@ -8,8 +8,8 @@ import '../router.dart';
 import '../services/service_locator.dart';
 
 class CastProfileScreen extends StatefulWidget {
-  final CastMember member;
-  const CastProfileScreen({super.key, required this.member});
+  final CastMember? member;
+  const CastProfileScreen({super.key, this.member});
 
   @override
   State<CastProfileScreen> createState() => _CastProfileScreenState();
@@ -20,7 +20,13 @@ class _CastProfileScreenState extends State<CastProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cast = widget.member;
+    if (widget.member == null) {
+      return Material(
+        color: context.qp.bg,
+        child: Center(child: Text(S.comingSoon, style: QT.body(14, c: context.qp.ink3))),
+      );
+    }
+    final cast = widget.member!;
 
     return Material(
       color: context.qp.bg,
@@ -147,15 +153,25 @@ class _Hero extends StatelessWidget {
               ),
             ),
           ),
-          // Diagonal stripes
-          CustomPaint(
-            painter: StripePainter(
-              color: Colors.white,
-              opacity: 0.04,
-              stripeWidth: 18,
-              totalStep: 36,
+          // Diagonal stripes (only when no photo)
+          if (cast.photoUrl == null || cast.photoUrl!.isEmpty)
+            CustomPaint(
+              painter: StripePainter(
+                color: Colors.white,
+                opacity: 0.04,
+                stripeWidth: 18,
+                totalStep: 36,
+              ),
             ),
-          ),
+          // Actor photo
+          if (cast.photoUrl != null && cast.photoUrl!.isNotEmpty)
+            Image.network(
+              cast.photoUrl!,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (_, e, s) => const SizedBox.shrink(),
+            ),
           Positioned(
             bottom: 0,
             left: 0,

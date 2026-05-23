@@ -6,6 +6,7 @@ import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
 import '../router.dart';
 import '../services/service_locator.dart';
+import 'cast_list_screen.dart';
 
 // ── Screen ───────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
@@ -109,7 +110,12 @@ class _Header extends StatelessWidget {
         ),
         Row(
           children: [
-            _IconBtn(Icons.search_rounded),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CastListScreen()),
+              ),
+              child: _IconBtn(Icons.search_rounded),
+            ),
             const SizedBox(width: 8),
             Stack(
               children: [

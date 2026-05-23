@@ -9,9 +9,32 @@ const POPULAR_LANGS = new Set([
   'ar', 'ru', 'it', 'hi', 'id', 'vi', 'th', 'pl', 'nl',
 ])
 
+
 interface TmdbTranslation {
   iso_639_1: string
   data: { name?: string; overview?: string; biography?: string }
+}
+
+// Hangul Unicode range check
+function containsHangul(s: string): boolean {
+  return /[가-힣ᄀ-ᇿ㄰-㆏]/.test(s)
+}
+
+// Extract Korean name: prefer translations endpoint, fall back to also_known_as Hangul
+function extractKoreanName(
+  translations: TmdbTranslation[],
+  alsoKnownAs: string[],
+  fallback: string
+): string {
+  const fromTranslation = translations
+    .find((t) => t.iso_639_1 === 'ko')
+    ?.data.name?.trim()
+  if (fromTranslation && containsHangul(fromTranslation)) return fromTranslation
+
+  const fromAka = alsoKnownAs.find((n) => containsHangul(n))
+  if (fromAka) return fromAka
+
+  return fallback
 }
 
 interface RawCastMember {
@@ -34,28 +57,17 @@ async function fetchPersonData(
   headers: HeadersInit,
   dramaRegion: Region
 ): Promise<Omit<CastMember, 'id' | 'role' | 'order' | 'createdAt' | 'updatedAt'>> {
-  // Kişi için 3 isteği paralel at
-  const [personRes, translationsRes, tvCreditsRes] = await Promise.all([
+  // 2 paralel istek — translations kaldırıldı (also_known_as yeterli, payload küçük)
+  const [personRes, tvCreditsRes] = await Promise.all([
     fetch(`${TMDB_BASE}/person/${personId}?language=ko-KR`, { headers }),
-    fetch(`${TMDB_BASE}/person/${personId}/translations`, { headers }),
     fetch(`${TMDB_BASE}/person/${personId}/tv_credits?language=ko-KR`, { headers }),
   ])
 
   const person = personRes.ok ? await personRes.json() : null
-  const translationsData = translationsRes.ok
-    ? await translationsRes.json()
-    : { translations: [] }
   const tvCreditsData = tvCreditsRes.ok ? await tvCreditsRes.json() : { cast: [] }
 
-  // Biyografi çevirileri — içi dolu diller
   const bioTranslations: Record<string, string> = {}
-  for (const t of translationsData.translations as TmdbTranslation[]) {
-    const lang = t.iso_639_1
-    const bio = t.data.biography?.trim()
-    if (POPULAR_LANGS.has(lang) && bio) {
-      bioTranslations[lang] = bio
-    }
-  }
+  if (person?.biography) bioTranslations['ko'] = person.biography
 
   // TV kredileri — tüm TMDB dizi görünümleri (film hariç)
   const tmdbCredits: TmdbCredit[] = (
@@ -84,9 +96,13 @@ async function fetchPersonData(
     ? new Date().getFullYear() - parseInt(birthDate.split('-')[0])
     : 0
 
+  const englishName = person?.name ?? ''
+  const alsoKnownAs: string[] = person?.also_known_as ?? []
+  const koreanName = extractKoreanName([], alsoKnownAs, englishName)
+
   return {
-    name: person?.name ?? '',
-    nameKo: person?.name ?? '',
+    name: englishName,
+    nameKo: koreanName,
     region: dramaRegion,
     age,
     hue: '#000000',
@@ -176,10 +192,8 @@ export async function POST(request: Request) {
       const personData = await fetchPersonData(member.id, headers, region)
       return {
         ...personData,
-        // Kişi adı Korece API'den geldiyse koru, yoksa raw cast'teki adı kullan
         name: personData.name || member.name,
-        nameKo: personData.name || member.name,
-        // Dizideki fotoğraf yoksa cast listesindeki profile_path'i kullan
+        nameKo: personData.nameKo || member.name,
         photoUrl:
           personData.photoUrl ??
           (member.profile_path ? `${IMG_BASE}${member.profile_path}` : undefined),

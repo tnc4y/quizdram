@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { Drama } from '@/lib/types'
 import { DramaEditModal } from './drama-edit-modal'
-import { Pencil } from 'lucide-react'
+import { Pencil, Search } from 'lucide-react'
 
 const REGION_LABEL: Record<string, string> = {
   kr: '🇰🇷 Kore',
@@ -30,6 +30,21 @@ interface Props {
 
 export function DramaTable({ dramas }: Props) {
   const [editing, setEditing] = useState<Drama | null>(null)
+  const [query, setQuery] = useState('')
+
+  const filtered = query.trim()
+    ? dramas.filter((d) => {
+        const q = query.toLowerCase()
+        return (
+          d.title?.toLowerCase().includes(q) ||
+          d.titleEn?.toLowerCase().includes(q) ||
+          d.titleKo?.toLowerCase().includes(q) ||
+          d.genre?.toLowerCase().includes(q) ||
+          REGION_LABEL[d.region]?.toLowerCase().includes(q) ||
+          String(d.year).includes(q)
+        )
+      })
+    : dramas
 
   if (dramas.length === 0) {
     return (
@@ -42,6 +57,21 @@ export function DramaTable({ dramas }: Props) {
 
   return (
     <>
+      {/* Search */}
+      <div className="flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2.5 mb-3 bg-white">
+        <Search size={15} className="text-zinc-400 flex-shrink-0" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Başlık, tür, yıl veya bölge ile ara..."
+          className="flex-1 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 bg-transparent"
+        />
+        {query && (
+          <button onClick={() => setQuery('')} className="text-zinc-300 hover:text-zinc-600 text-xs">✕</button>
+        )}
+        <span className="text-xs text-zinc-400 flex-shrink-0">{filtered.length} / {dramas.length}</span>
+      </div>
+
       <div className="rounded-xl border border-zinc-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 text-zinc-500 text-xs uppercase tracking-wide">
@@ -57,7 +87,14 @@ export function DramaTable({ dramas }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100 bg-white">
-            {dramas.map((drama) => (
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-10 text-center text-sm text-zinc-400">
+                  &ldquo;{query}&rdquo; için sonuç bulunamadı
+                </td>
+              </tr>
+            )}
+            {filtered.map((drama) => (
               <tr key={drama.id} className="hover:bg-zinc-50 transition-colors">
                 <td className="px-4 py-3">
                   {drama.posterUrl ? (

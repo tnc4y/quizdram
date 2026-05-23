@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../lang.dart';
+import '../utils/korean_romanizer.dart';
 import 'cast_service.dart';
 
 class FirebaseCastService implements CastService {
@@ -30,20 +31,25 @@ class FirebaseCastService implements CastService {
   CastMember _castFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data()!;
     final lang = appLang.value;
-    final name = lang == 'ko'
-        ? (d['nameKo'] ?? d['nameEn'] ?? d['name'] ?? '')
-        : (d['nameEn'] ?? d['name'] ?? '');
-    final hangul = d['nameKo'] ?? d['hangul'] ?? '';
-    final hueInt = d['hue'] as int? ?? 0xFFFF5470;
+    String name;
+    if (lang == 'ko') {
+      name = (d['nameKo'] ?? d['nameEn'] ?? d['name'] ?? '') as String;
+    } else {
+      final raw = (d['nameEn'] ?? d['name'] ?? '') as String;
+      name = (raw.isNotEmpty && KoreanRomanizer.hasHangul(raw))
+          ? KoreanRomanizer.romanize(raw)
+          : raw;
+    }
+    final hangul = d['nameKo'] as String? ?? d['hangul'] as String? ?? '';
     final dramaIds = (d['dramaIds'] as List?)?.cast<String>() ?? [];
     return CastMember(
       doc.id,
-      name as String,
-      hangul as String,
+      name,
+      hangul,
       d['region'] as String? ?? 'kr',
       d['role'] as String? ?? '',
       (d['age'] as num?)?.toInt() ?? 0,
-      Color(hueInt),
+      _hexColor(d['hue'] as String?),
       photoUrl: d['photoUrl'] as String?,
       dramaIds: dramaIds,
     );
@@ -52,20 +58,27 @@ class FirebaseCastService implements CastService {
   Drama _dramaFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data()!;
     final lang = appLang.value;
-    final title = lang == 'ko'
-        ? (d['titleKo'] ?? d['titleEn'] ?? d['title'] ?? '')
-        : (d['titleEn'] ?? d['title'] ?? '');
-    final hangul = d['titleKo'] ?? d['hangul'] ?? '';
-    final hueInt = d['hue'] as int? ?? 0xFF2D1B4E;
+    final title = (lang == 'ko'
+        ? (d['titleKo'] ?? d['titleEn'] ?? d['title'])
+        : (d['titleEn'] ?? d['title'])) as String? ?? '';
+    final hangul = d['titleKo'] as String? ?? d['hangul'] as String? ?? '';
+    final genres = d['genres'] as List?;
+    final genre = (genres?.isNotEmpty == true ? genres!.first : d['genre']) as String? ?? '';
     return Drama(
       doc.id,
-      title as String,
-      hangul as String,
+      title,
+      hangul,
       d['region'] as String? ?? 'kr',
       (d['year'] as num?)?.toInt() ?? 0,
-      (d['eps'] as num?)?.toInt() ?? 0,
-      d['genre'] as String? ?? '',
-      Color(hueInt),
+      (d['episodes'] as num?)?.toInt() ?? 0,
+      genre,
+      _hexColor(d['hue'] as String?),
     );
+  }
+
+  Color _hexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return const Color(0xFFFF5470);
+    final h = hex.replaceFirst('#', '');
+    return Color(int.parse('FF$h', radix: 16));
   }
 }
