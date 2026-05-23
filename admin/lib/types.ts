@@ -87,50 +87,69 @@ export type QuizTemplateKey =
 export interface QuizTemplateParams {
   dramaId?: string
   castId?: string
-  // Gelecekte genişletilebilir
+  groupId?: string  // group_template sorularda quizGroups/{id}
   [key: string]: string | undefined
 }
 
 // Seçenek çevirisi — custom sorularda her dil için ayrı option metni
 export interface QuizOptionTranslation {
-  text: string
+  text?: string
   sub?: string
 }
+
+export type OptionStyle = 'text' | 'poster' | 'text+image'
 
 // Flutter: QuizOpt
 export interface QuizOption {
   id: string
-  text: string                    // QuizOpt.text — fallback (EN)
-  sub?: string                    // QuizOpt.sub — kısa açıklama/ipucu
-  // { 'tr': { text: '...', sub: '...' }, 'ko': { ... }, ... }
+  text?: string                   // poster-only seçeneklerde boş olabilir
+  sub?: string
+  imageUrl?: string               // poster / fotoğraf stili seçenekler için
   translations?: Record<string, QuizOptionTranslation>
 }
 
 export interface QuizQuestion {
   id: string
-  type: 'template' | 'custom'
+  // template: Flutter metni üretir; group_template: gruptan rastgele seçer
+  // custom: admin metin girer; audio: ses dosyası sorusu
+  type: 'template' | 'group_template' | 'custom' | 'audio'
 
-  // --- Template sorular ---
+  // --- Template / Group Template ---
   templateKey?: QuizTemplateKey
   params?: QuizTemplateParams
-  // Template'de options boş bırakılır; Flutter runtime'da DB'den oluşturur
-  // correctId template için referans ID (örn. doğru dramaId/castId)
 
-  // --- Custom sorular ---
-  text: string                    // fallback metin (EN)
-  // { 'tr': { text: '...', options: [...] }, 'ko': { ... }, ... }
+  // --- Custom / Audio ---
+  text?: string                   // fallback metin (EN) — template için boş
   translations?: Record<string, {
     text: string
     hint?: string
-    options?: QuizOptionTranslation[]
   }>
 
-  options: QuizOption[]
-  correctId: string               // QuizOpt.correct → doğru şıkkın id'si
+  // --- Medya ---
+  imageUrl?: string
+  audioUrl?: string               // ses soruları için Firebase Storage URL
+  optionStyle?: OptionStyle       // seçeneklerin görünüm stili
+
+  // template/group_template için options ve correctId olmayabilir
+  options?: QuizOption[]
+  correctId?: string
+
   difficulty?: 'easy' | 'medium' | 'hard'
-  hint?: string                   // fallback hint (EN)
-  imageUrl?: string               // cast_photo_who_is_this gibi görselli soru tipleri için
+  hint?: string
   order: number
+}
+
+// quizGroups/{groupId} — önceden gruplandırılmış dizi/oyuncu havuzu
+export interface QuizGroup {
+  id: string
+  name: string
+  description?: string
+  type: 'drama' | 'cast'
+  itemIds: string[]               // dramaIds veya castIds
+  region?: Region
+  status: Status
+  createdAt?: FirebaseFirestore.Timestamp
+  updatedAt?: FirebaseFirestore.Timestamp
 }
 
 export interface QuizPack {

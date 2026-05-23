@@ -34,6 +34,17 @@ export async function saveDrama(
   cast: CastInput[]
 ): Promise<{ error?: string }> {
   try {
+    if (drama.tmdbId) {
+      const existing = await adminDb
+        .collection('dramas')
+        .where('tmdbId', '==', drama.tmdbId)
+        .limit(1)
+        .get()
+      if (!existing.empty) {
+        return { error: `Bu dizi zaten mevcut (TMDB ID: ${drama.tmdbId}).` }
+      }
+    }
+
     const dramaRef = adminDb.collection('dramas').doc()
     const dramaId = dramaRef.id
 
@@ -57,6 +68,21 @@ export async function saveDrama(
     }))
 
     const castSaves = cast.map(async (member) => {
+      if (member.tmdbId) {
+        const existing = await adminDb
+          .collection('cast')
+          .where('tmdbId', '==', member.tmdbId)
+          .limit(1)
+          .get()
+        if (!existing.empty) {
+          await existing.docs[0].ref.update({
+            dramaIds: FieldValue.arrayUnion(dramaId),
+            updatedAt: FieldValue.serverTimestamp(),
+          })
+          return
+        }
+      }
+
       const castRef = adminDb.collection('cast').doc()
       const castId = castRef.id
 
@@ -149,4 +175,24 @@ export async function deleteDrama(id: string): Promise<{ error?: string }> {
     console.error('deleteDrama hatası:', err)
     return { error: 'Silme başarısız.' }
   }
+}
+
+export async function getCastByDrama(dramaId: string): Promise<CastMember[]> {
+  const snap = await adminDb
+    .collection('cast')
+    .where('dramaIds', 'array-contains', dramaId)
+    .get()
+  return snap.docs.map((d) => JSON.parse(JSON.stringify(d.data())) as CastMember)
+}
+
+export async function checkExistingTmdbIds(tmdbIds: number[]): Promise<number[]> {
+  if (tmdbIds.length === 0) return []
+  const chunks: number[][] = []
+  for (let i = 0; i < tmdbIds.length; i += 30) chunks.push(tmdbIds.slice(i, i + 30))
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      adminDb.collection('dramas').where('tmdbId', 'in', chunk).get()
+    )
+  )
+  return results.flatMap((snap) => snap.docs.map((d) => d.data().tmdbId as number))
 }

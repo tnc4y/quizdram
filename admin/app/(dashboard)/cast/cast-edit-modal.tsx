@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef, useTransition } from 'react'
+import { useState, useRef, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CastMember, Region } from '@/lib/types'
 import { updateCast, deleteCast } from './actions'
+import { checkExistingTmdbIds } from '../dramas/actions'
 
 interface Props {
   cast: CastMember
@@ -52,12 +53,21 @@ export function CastEditModal({ cast, onClose }: Props) {
     bioKo: cast.bioKo ?? '',
     status: cast.status,
   })
+  const [dbDramaIds, setDbDramaIds] = useState<Set<number>>(new Set())
   const [photoPreview, setPhotoPreview] = useState<string | null>(cast.photoUrl ?? null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isPending, startTransition] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (tab === 'credits' && cast.tmdbCredits && cast.tmdbCredits.length > 0 && dbDramaIds.size === 0) {
+      checkExistingTmdbIds(cast.tmdbCredits.map((c) => c.tmdbId)).then(
+        (ids) => setDbDramaIds(new Set(ids))
+      )
+    }
+  }, [tab, cast.tmdbCredits, dbDramaIds.size])
 
   function set(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -97,7 +107,7 @@ export function CastEditModal({ cast, onClose }: Props) {
     })
   }
 
-  const inputCls = 'w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 bg-white'
+  const inputCls = 'w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-zinc-900 bg-white placeholder:text-zinc-400'
   const labelCls = 'block text-xs font-medium text-zinc-500 mb-1'
 
   return (
@@ -248,28 +258,35 @@ export function CastEditModal({ cast, onClose }: Props) {
               {!cast.tmdbCredits || cast.tmdbCredits.length === 0 ? (
                 <p className="text-sm text-zinc-400 py-8 text-center">TMDB kredisi yok.</p>
               ) : (
-                cast.tmdbCredits.map((credit) => (
-                  <div key={credit.tmdbId} className="flex items-center gap-3 p-3 rounded-lg border border-zinc-100 hover:bg-zinc-50">
-                    {credit.posterPath ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={`https://image.tmdb.org/t/p/w92${credit.posterPath}`}
-                        alt={credit.title}
-                        className="w-8 h-12 object-cover rounded flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-8 h-12 bg-zinc-100 rounded flex-shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-zinc-900 truncate">{credit.title}</p>
-                      <p className="text-xs text-zinc-400">
-                        {credit.year && <span>{credit.year}</span>}
-                        {credit.character && <span> · {credit.character}</span>}
-                      </p>
+                cast.tmdbCredits.map((credit) => {
+                  const inDb = dbDramaIds.has(credit.tmdbId)
+                  return (
+                    <div key={credit.tmdbId} className={`flex items-center gap-3 p-3 rounded-lg border hover:bg-zinc-50 ${inDb ? 'border-green-200 bg-green-50/30' : 'border-zinc-100'}`}>
+                      {credit.posterPath ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`https://image.tmdb.org/t/p/w92${credit.posterPath}`}
+                          alt={credit.title}
+                          className="w-8 h-12 object-cover rounded flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-8 h-12 bg-zinc-100 rounded flex-shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-zinc-900 truncate">{credit.title}</p>
+                        <p className="text-xs text-zinc-400">
+                          {credit.year && <span>{credit.year}</span>}
+                          {credit.character && <span> · {credit.character}</span>}
+                        </p>
+                      </div>
+                      {inDb ? (
+                        <span className="flex-shrink-0 text-xs font-medium text-green-700 bg-green-100 rounded px-2 py-0.5">DB&apos;de var</span>
+                      ) : (
+                        <span className="flex-shrink-0 text-xs text-zinc-300">#{credit.tmdbId}</span>
+                      )}
                     </div>
-                    <span className="ml-auto text-xs text-zinc-300 flex-shrink-0">#{credit.tmdbId}</span>
-                  </div>
-                ))
+                  )
+                })
               )}
             </div>
           )}

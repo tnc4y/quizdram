@@ -72,9 +72,9 @@ export function DramaTable({ dramas }: Props) {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <p className="font-medium text-zinc-900 truncate max-w-[200px]">{drama.titleKo || drama.title}</p>
-                  {drama.titleEn && (
-                    <p className="text-xs text-zinc-400 truncate max-w-[200px]">{drama.titleEn}</p>
+                  <p className="font-medium text-zinc-900 truncate max-w-[200px]">{drama.titleEn || drama.titleKo || drama.title}</p>
+                  {drama.titleEn && drama.titleKo && (
+                    <p className="text-xs text-zinc-400 truncate max-w-[200px]">{drama.titleKo}</p>
                   )}
                 </td>
                 <td className="px-4 py-3 text-zinc-600 whitespace-nowrap">

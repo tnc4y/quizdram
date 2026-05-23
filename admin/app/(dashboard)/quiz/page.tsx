@@ -1,59 +1,54 @@
 import { adminDb } from '@/lib/firebase-admin'
 import type { Drama } from '@/lib/types'
+import Link from 'next/link'
 import { QuizCreateModal } from './quiz-create-modal'
 import { StatusToggle } from './status-toggle'
 
 interface QuizPackRow {
   id: string
   title: string
-  dramaId: string
+  dramaTitle: string
+  questionCount: number
   difficulty: string
-  optionCount: number
   status: string
-  publishedAt?: { _seconds: number } | null
 }
 
 async function getData() {
   const [packsSnap, dramasSnap] = await Promise.all([
     adminDb.collection('quizPacks').orderBy('createdAt', 'desc').get(),
-    adminDb.collection('dramas').where('status', '==', 'published').orderBy('title').get(),
+    adminDb.collection('dramas').get(),
   ])
+
+  const dramaMap = new Map(
+    dramasSnap.docs.map((d) => {
+      const data = d.data()
+      return [d.id, (data.titleEn || data.titleKo || data.title) as string]
+    })
+  )
 
   const packs: QuizPackRow[] = packsSnap.docs.map((d) => {
     const data = d.data()
     return {
       id: d.id,
       title: data.title ?? '—',
-      dramaId: data.dramaId ?? '',
+      dramaTitle: dramaMap.get(data.dramaId) ?? '—',
+      questionCount: (data.questions ?? []).length,
       difficulty: data.difficulty ?? '—',
-      optionCount: (data.options ?? []).length,
       status: data.status ?? 'draft',
-      publishedAt: data.publishedAt ?? null,
     }
   })
 
-  const dramas = dramasSnap.docs.map((d) => d.data() as Drama)
-
+  const dramas = dramasSnap.docs.map((d) => JSON.parse(JSON.stringify(d.data())) as Drama)
   return { packs, dramas }
 }
 
-const DIFFICULTY_LABEL: Record<string, string> = {
-  easy: 'Kolay',
-  medium: 'Orta',
-  hard: 'Zor',
-}
-
+const DIFFICULTY_LABEL: Record<string, string> = { easy: 'Kolay', medium: 'Orta', hard: 'Zor' }
 const STATUS_STYLE: Record<string, string> = {
   draft: 'bg-zinc-100 text-zinc-500',
   review: 'bg-amber-50 text-amber-700',
   published: 'bg-green-50 text-green-700',
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Taslak',
-  review: 'İnceleme',
-  published: 'Yayında',
-}
+const STATUS_LABEL: Record<string, string> = { draft: 'Taslak', review: 'İnceleme', published: 'Yayında' }
 
 export default async function QuizPage() {
   const { packs, dramas } = await getData()
@@ -76,29 +71,32 @@ export default async function QuizPage() {
             <thead className="bg-zinc-50 text-zinc-500 text-xs uppercase tracking-wide">
               <tr>
                 <th className="text-left px-4 py-3 font-medium">Başlık</th>
+                <th className="text-left px-4 py-3 font-medium">Drama</th>
+                <th className="text-left px-4 py-3 font-medium">Soru</th>
                 <th className="text-left px-4 py-3 font-medium">Zorluk</th>
-                <th className="text-left px-4 py-3 font-medium">Şık</th>
                 <th className="text-left px-4 py-3 font-medium">Durum</th>
-                <th className="text-left px-4 py-3 font-medium">İşlem</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 bg-white">
               {packs.map((pack) => (
                 <tr key={pack.id} className="hover:bg-zinc-50 transition-colors">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-zinc-900 truncate max-w-[280px]">{pack.title}</p>
+                    <p className="font-medium text-zinc-900 truncate max-w-[220px]">{pack.title}</p>
                   </td>
-                  <td className="px-4 py-3 text-zinc-600">
-                    {DIFFICULTY_LABEL[pack.difficulty] ?? pack.difficulty}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600">{pack.optionCount}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLE[pack.status] ?? ''}`}>
-                      {STATUS_LABEL[pack.status] ?? pack.status}
-                    </span>
-                  </td>
+                  <td className="px-4 py-3 text-zinc-600 truncate max-w-[160px]">{pack.dramaTitle}</td>
+                  <td className="px-4 py-3 text-zinc-600">{pack.questionCount}</td>
+                  <td className="px-4 py-3 text-zinc-600">{DIFFICULTY_LABEL[pack.difficulty] ?? pack.difficulty}</td>
                   <td className="px-4 py-3">
                     <StatusToggle id={pack.id} currentStatus={pack.status as 'draft' | 'review' | 'published'} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/quiz/${pack.id}`}
+                      className="px-3 py-1 text-xs font-medium text-zinc-600 border border-zinc-200 rounded-lg hover:bg-zinc-50 hover:border-zinc-400 transition-colors"
+                    >
+                      Düzenle
+                    </Link>
                   </td>
                 </tr>
               ))}

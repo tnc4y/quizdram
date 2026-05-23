@@ -9,15 +9,16 @@ import {
   Users,
   BookOpen,
   Newspaper,
-  LayoutDashboard,
   UserCog,
   LogOut,
+  Layers,
 } from 'lucide-react'
 
 const NAV = [
   { href: '/dramas',  label: 'Dramalar',      icon: Film },
   { href: '/cast',    label: 'Cast',           icon: Users },
   { href: '/quiz',    label: 'Quiz Paketleri', icon: BookOpen },
+  { href: '/groups',  label: 'Gruplar',        icon: Layers },
   { href: '/news',    label: 'Haberler',       icon: Newspaper },
   { href: '/users',   label: 'Kullanıcılar',   icon: UserCog },
 ]

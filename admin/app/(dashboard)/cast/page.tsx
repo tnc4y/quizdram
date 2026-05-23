@@ -4,7 +4,7 @@ import { CastTable } from './cast-table'
 
 async function getCast(): Promise<CastMember[]> {
   const snap = await adminDb.collection('cast').orderBy('createdAt', 'desc').get()
-  return snap.docs.map((d) => d.data() as CastMember)
+  return snap.docs.map((d) => JSON.parse(JSON.stringify(d.data())) as CastMember)
 }
 
 export default async function CastPage() {

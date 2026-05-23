@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useRef, useTransition } from 'react'
+import { useState, useRef, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import type { Drama, Region } from '@/lib/types'
-import { updateDrama, deleteDrama } from './actions'
+import type { Drama, Region, CastMember } from '@/lib/types'
+import { updateDrama, deleteDrama, getCastByDrama } from './actions'
 
 interface Props {
   drama: Drama
   onClose: () => void
 }
 
-type Tab = 'general' | 'titles' | 'synopsis'
+type Tab = 'general' | 'titles' | 'synopsis' | 'cast'
 
 const REGIONS: { value: Region; label: string }[] = [
   { value: 'kr', label: '🇰🇷 Kore' },
@@ -53,6 +53,7 @@ export function DramaEditModal({ drama, onClose }: Props) {
     synopsisKo: drama.synopsisKo ?? '',
     synopsisTr: drama.synopsisTr ?? '',
   })
+  const [castList, setCastList] = useState<CastMember[] | null>(null)
   const [posterPreview, setPosterPreview] = useState<string | null>(drama.posterUrl ?? null)
   const [posterFile, setPosterFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -100,7 +101,13 @@ export function DramaEditModal({ drama, onClose }: Props) {
     })
   }
 
-  const inputCls = 'w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-zinc-900 bg-white'
+  useEffect(() => {
+    if (tab === 'cast' && castList === null) {
+      getCastByDrama(drama.id).then(setCastList)
+    }
+  }, [tab, drama.id, castList])
+
+  const inputCls = 'w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-zinc-900 bg-white placeholder:text-zinc-400'
   const labelCls = 'block text-xs font-medium text-zinc-500 mb-1'
 
   return (
@@ -119,7 +126,7 @@ export function DramaEditModal({ drama, onClose }: Props) {
 
         {/* Tabs */}
         <div className="flex border-b border-zinc-100 px-6 flex-shrink-0">
-          {([['general', 'Genel'], ['titles', 'Başlıklar'], ['synopsis', 'Özet']] as [Tab, string][]).map(([key, label]) => (
+          {([['general', 'Genel'], ['titles', 'Başlıklar'], ['synopsis', 'Özet'], ['cast', 'Oyuncular']] as [Tab, string][]).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
@@ -255,6 +262,34 @@ export function DramaEditModal({ drama, onClose }: Props) {
                 <label className={labelCls}>Özet — Türkçe</label>
                 <textarea rows={4} className={inputCls} value={form.synopsisTr} onChange={e => set('synopsisTr', e.target.value)} placeholder="Türkçe özet..." />
               </div>
+            </div>
+          )}
+
+          {tab === 'cast' && (
+            <div className="flex flex-col gap-2">
+              {castList === null ? (
+                <p className="text-sm text-zinc-400 py-8 text-center">Yükleniyor…</p>
+              ) : castList.length === 0 ? (
+                <p className="text-sm text-zinc-400 py-8 text-center">Bu dizide kayıtlı oyuncu yok.</p>
+              ) : (
+                castList.map((member) => (
+                  <div key={member.id} className="flex items-center gap-3 p-3 rounded-lg border border-zinc-100 hover:bg-zinc-50">
+                    {member.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={member.photoUrl} alt={member.name} className="w-9 h-12 object-cover rounded-lg flex-shrink-0" />
+                    ) : (
+                      <div className="w-9 h-12 bg-zinc-100 rounded-lg flex-shrink-0 flex items-center justify-center text-zinc-300">👤</div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-zinc-900 truncate">{member.nameEn || member.nameKo || member.name}</p>
+                      {member.nameEn && member.nameKo && (
+                        <p className="text-xs text-zinc-400 truncate">{member.nameKo}</p>
+                      )}
+                    </div>
+                    <span className="ml-auto text-xs text-zinc-400 flex-shrink-0">{member.role}</span>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
