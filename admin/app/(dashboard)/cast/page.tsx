@@ -2,6 +2,7 @@ import { adminDb } from '@/lib/firebase-admin'
 import type { CastMember } from '@/lib/types'
 import { CastTable } from './cast-table'
 import { FixNameKoBtn } from './fix-nameko-btn'
+import { MigrateIdsBtn } from './migrate-ids-btn'
 
 async function getCast(): Promise<CastMember[]> {
   const snap = await adminDb.collection('cast').orderBy('createdAt', 'desc').get()
@@ -17,7 +18,10 @@ export default async function CastPage() {
           <h1 className="text-xl font-semibold text-zinc-900">Cast</h1>
           <p className="text-sm text-zinc-400 mt-0.5">{cast.length} oyuncu</p>
         </div>
-        <FixNameKoBtn />
+        <div className="flex items-center gap-2">
+          <MigrateIdsBtn />
+          <FixNameKoBtn />
+        </div>
       </div>
       <CastTable cast={cast} />
     </div>

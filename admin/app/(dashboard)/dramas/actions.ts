@@ -34,19 +34,14 @@ export async function saveDrama(
   cast: CastInput[]
 ): Promise<{ error?: string }> {
   try {
-    if (drama.tmdbId) {
-      const existing = await adminDb
-        .collection('dramas')
-        .where('tmdbId', '==', drama.tmdbId)
-        .limit(1)
-        .get()
-      if (!existing.empty) {
-        return { error: `Bu dizi zaten mevcut (TMDB ID: ${drama.tmdbId}).` }
-      }
-    }
-
-    const dramaRef = adminDb.collection('dramas').doc()
+    const dramaRef = drama.tmdbId
+      ? adminDb.collection('dramas').doc(String(drama.tmdbId))
+      : adminDb.collection('dramas').doc()
     const dramaId = dramaRef.id
+
+    if ((await dramaRef.get()).exists) {
+      return { error: `Bu dizi zaten mevcut (TMDB ID: ${drama.tmdbId}).` }
+    }
 
     let posterUrl = drama.posterUrl
     let backdropUrl = drama.backdropUrl
@@ -68,27 +63,23 @@ export async function saveDrama(
     }))
 
     const castSaves = cast.map(async (member) => {
-      if (member.tmdbId) {
-        const existing = await adminDb
-          .collection('cast')
-          .where('tmdbId', '==', member.tmdbId)
-          .limit(1)
-          .get()
-        if (!existing.empty) {
-          await existing.docs[0].ref.update({
-            dramaIds: FieldValue.arrayUnion(dramaId),
-            updatedAt: FieldValue.serverTimestamp(),
-          })
-          return
-        }
-      }
-
-      const castRef = adminDb.collection('cast').doc()
+      const castRef = member.tmdbPersonId
+        ? adminDb.collection('cast').doc(String(member.tmdbPersonId))
+        : adminDb.collection('cast').doc()
       const castId = castRef.id
 
       let photoUrl = member.photoUrl
       if (photoUrl?.startsWith('https://image.tmdb.org')) {
         photoUrl = await copyImage(photoUrl, `cast/${castId}/photo.jpg`)
+      }
+
+      const existing = await castRef.get()
+      if (existing.exists) {
+        await castRef.update({
+          dramaIds: FieldValue.arrayUnion(dramaId),
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+        return
       }
 
       await castRef.set(stripUndefined({
@@ -183,6 +174,65 @@ export async function getCastByDrama(dramaId: string): Promise<CastMember[]> {
     .where('dramaIds', 'array-contains', dramaId)
     .get()
   return snap.docs.map((d) => JSON.parse(JSON.stringify(d.data())) as CastMember)
+}
+
+export async function migrateDramaDocIds(): Promise<{
+  migrated: number
+  skipped: number
+  total: number
+  error?: string
+}> {
+  const snap = await adminDb.collection('dramas').get()
+
+  const toMigrate = snap.docs.filter((doc) => {
+    const d = doc.data()
+    const tid = d.tmdbId
+    return tid && doc.id !== String(tid)
+  })
+
+  if (toMigrate.length === 0) {
+    return { migrated: 0, skipped: 0, total: snap.docs.length }
+  }
+
+  let migrated = 0
+  let skipped = 0
+
+  const BATCH_SIZE = 10
+  for (let i = 0; i < toMigrate.length; i += BATCH_SIZE) {
+    const chunk = toMigrate.slice(i, i + BATCH_SIZE)
+
+    await Promise.all(
+      chunk.map(async (doc) => {
+        const d = doc.data()
+        const newId = String(d.tmdbId)
+        const newRef = adminDb.collection('dramas').doc(newId)
+
+        try {
+          const existingSnap = await newRef.get()
+          if (existingSnap.exists) {
+            // Hedef ID zaten var — duplicate, eskiyi sil
+            await doc.ref.delete()
+            skipped++
+          } else {
+            const batch = adminDb.batch()
+            batch.set(newRef, { ...d, id: newId })
+            batch.delete(doc.ref)
+            await batch.commit()
+            migrated++
+          }
+        } catch {
+          skipped++
+        }
+      })
+    )
+
+    if (i + BATCH_SIZE < toMigrate.length) {
+      await new Promise((r) => setTimeout(r, 200))
+    }
+  }
+
+  revalidatePath('/dramas')
+  return { migrated, skipped, total: snap.docs.length }
 }
 
 export async function checkExistingTmdbIds(tmdbIds: number[]): Promise<number[]> {

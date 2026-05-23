@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { fixNameKoBatch } from './actions'
+import { fixRomajiBatch } from './actions'
 import { Languages } from 'lucide-react'
 
 export function FixNameKoBtn() {
@@ -10,7 +10,7 @@ export function FixNameKoBtn() {
 
   function handleFix() {
     startTransition(async () => {
-      const res = await fixNameKoBatch()
+      const res = await fixRomajiBatch()
       setResult({ updated: res.updated, skipped: res.skipped })
       if (res.error) alert(res.error)
     })

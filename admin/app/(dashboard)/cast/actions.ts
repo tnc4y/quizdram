@@ -11,8 +11,8 @@ function containsHangul(s: string): boolean {
   return /[가-힣ᄀ-ᇿ]/.test(s)
 }
 
-function extractHangulFromAka(alsoKnownAs: string[]): string | undefined {
-  return alsoKnownAs.find((n) => containsHangul(n))
+function isRomaji(s: string): boolean {
+  return s.length > 0 && !containsHangul(s) && !/[一-鿿぀-ヿ]/.test(s)
 }
 
 type UpdatePayload = {
@@ -91,26 +91,29 @@ export async function getCastList(): Promise<CastMember[]> {
   return snap.docs.map((d) => d.data() as CastMember)
 }
 
-export async function fixNameKoBatch(): Promise<{ updated: number; skipped: number; error?: string }> {
+// name alanı Hangul olan (romaji eksik) kayıtları TMDB'den en-US ile patch'le
+export async function fixRomajiBatch(): Promise<{ updated: number; skipped: number; total: number; error?: string }> {
   const key = process.env.TMDB_API_KEY
-  if (!key) return { updated: 0, skipped: 0, error: 'TMDB_API_KEY tanımlı değil' }
+  if (!key) return { updated: 0, skipped: 0, total: 0, error: 'TMDB_API_KEY tanımlı değil' }
 
   const headers = { Authorization: `Bearer ${key}` }
 
-  // Hangul olmayan nameKo'ya sahip cast üyelerini bul
   const snap = await adminDb.collection('cast').get()
+
+  // name'i Hangul olan veya nameKo ile aynı olan kayıtlar = romaji eksik
   const toFix = snap.docs.filter((doc) => {
     const d = doc.data()
-    const tmdbId: number | undefined = d.tmdbPersonId ?? d.tmdbId
-    return tmdbId && !containsHangul(d.nameKo ?? '')
+    const tmdbPersonId: number | undefined = d.tmdbPersonId ?? d.tmdbId
+    const name: string = d.name ?? ''
+    const nameKo: string = d.nameKo ?? ''
+    return tmdbPersonId && (containsHangul(name) || name === nameKo)
   })
 
-  if (toFix.length === 0) return { updated: 0, skipped: snap.docs.length }
+  if (toFix.length === 0) return { updated: 0, skipped: 0, total: snap.docs.length }
 
   let updated = 0
   let skipped = 0
 
-  // 10'arlı batch — TMDB rate limit aşmamak için
   const BATCH_SIZE = 10
   for (let i = 0; i < toFix.length; i += BATCH_SIZE) {
     const chunk = toFix.slice(i, i + BATCH_SIZE)
@@ -120,31 +123,116 @@ export async function fixNameKoBatch(): Promise<{ updated: number; skipped: numb
         const tmdbPersonId: number = d.tmdbPersonId ?? d.tmdbId
         try {
           const res = await fetch(
-            `${TMDB_BASE}/person/${tmdbPersonId}?language=ko-KR`,
+            `${TMDB_BASE}/person/${tmdbPersonId}?language=en-US`,
             { headers }
           )
           if (!res.ok) { skipped++; return }
-          const person = await res.json()
-          const aka: string[] = person.also_known_as ?? []
-          const hangul = extractHangulFromAka(aka)
-          if (!hangul) { skipped++; return }
 
-          await doc.ref.update({
-            nameKo: hangul,
+          const person = await res.json()
+          const romajiName: string = person.name ?? ''
+
+          // TMDB'den gelen isim de Hangul ise atla
+          if (!romajiName || !isRomaji(romajiName)) { skipped++; return }
+
+          const update: Record<string, unknown> = {
+            name: romajiName,
             updatedAt: FieldValue.serverTimestamp(),
-          })
+          }
+
+          // nameKo'da Hangul yoksa onu da doldur
+          if (!containsHangul(d.nameKo ?? '')) {
+            const aka: string[] = person.also_known_as ?? []
+            const hangul = aka.find((n: string) => containsHangul(n))
+            if (hangul) update.nameKo = hangul
+          }
+
+          await doc.ref.update(update)
           updated++
         } catch {
           skipped++
         }
       })
     )
-    // Batch'ler arası kısa bekleme
     if (i + BATCH_SIZE < toFix.length) {
       await new Promise((r) => setTimeout(r, 300))
     }
   }
 
   revalidatePath('/cast')
-  return { updated, skipped }
+  return { updated, skipped, total: snap.docs.length }
+}
+
+// Tüm cast doc ID'lerini tmdbPersonId ile eşleştir (duplicate'i kökten önler)
+export async function migrateCastDocIds(): Promise<{
+  migrated: number
+  merged: number
+  skipped: number
+  total: number
+  error?: string
+}> {
+  const snap = await adminDb.collection('cast').get()
+
+  const toMigrate = snap.docs.filter((doc) => {
+    const d = doc.data()
+    const pid = d.tmdbPersonId
+    return pid && doc.id !== String(pid)
+  })
+
+  if (toMigrate.length === 0) {
+    return { migrated: 0, merged: 0, skipped: 0, total: snap.docs.length }
+  }
+
+  let migrated = 0
+  let merged = 0
+  let skipped = 0
+
+  const BATCH_SIZE = 10
+  for (let i = 0; i < toMigrate.length; i += BATCH_SIZE) {
+    const chunk = toMigrate.slice(i, i + BATCH_SIZE)
+
+    await Promise.all(
+      chunk.map(async (doc) => {
+        const d = doc.data()
+        const newId = String(d.tmdbPersonId)
+        const newRef = adminDb.collection('cast').doc(newId)
+
+        try {
+          const existingSnap = await newRef.get()
+
+          if (existingSnap.exists) {
+            // Zaten doğru ID'li bir doc var — sadece dramaIds'i birleştir, eskiyi sil
+            const existingData = existingSnap.data()!
+            const mergedDramaIds = Array.from(
+              new Set([
+                ...(existingData.dramaIds ?? []),
+                ...(d.dramaIds ?? []),
+              ])
+            )
+            await newRef.update({
+              dramaIds: mergedDramaIds,
+              updatedAt: FieldValue.serverTimestamp(),
+            })
+            await doc.ref.delete()
+            merged++
+          } else {
+            // Yeni doc oluştur, eskiyi sil
+            const writeBatch = adminDb.batch()
+            writeBatch.set(newRef, { ...d, id: newId })
+            writeBatch.delete(doc.ref)
+            await writeBatch.commit()
+            migrated++
+          }
+        } catch {
+          skipped++
+        }
+      })
+    )
+
+    if (i + BATCH_SIZE < toMigrate.length) {
+      await new Promise((r) => setTimeout(r, 200))
+    }
+  }
+
+  revalidatePath('/cast')
+  return { migrated, merged, skipped, total: snap.docs.length }
 }

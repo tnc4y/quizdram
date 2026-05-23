@@ -2,6 +2,7 @@ import { adminDb } from '@/lib/firebase-admin'
 import type { Drama } from '@/lib/types'
 import { DramaTable } from './drama-table'
 import { TmdbImportModal } from './tmdb-import-modal'
+import { MigrateDramaIdsBtn } from './migrate-ids-btn'
 
 async function getDramas(): Promise<Drama[]> {
   const snap = await adminDb.collection('dramas').orderBy('createdAt', 'desc').get()
@@ -14,7 +15,10 @@ export default async function DramasPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-semibold text-zinc-900">Dramalar</h1>
-        <TmdbImportModal />
+        <div className="flex items-center gap-2">
+          <MigrateDramaIdsBtn />
+          <TmdbImportModal />
+        </div>
       </div>
       <DramaTable dramas={dramas} />
     </div>

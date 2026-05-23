@@ -123,10 +123,10 @@ function GroupEditModal({
   const [isPending, startTransition] = useTransition()
 
   const items = type === 'drama' ? dramas : castList
-  const filtered = items.filter((item) =>
-    item.name?.toLowerCase().includes(search.toLowerCase()) ||
-    (item as DramaItem).title?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = items.filter((item) => {
+    const label = (item as CastItem).name ?? (item as DramaItem).title ?? ''
+    return label.toLowerCase().includes(search.toLowerCase())
+  })
 
   function toggleItem(id: string) {
     setSelectedIds((prev) => {

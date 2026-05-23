@@ -339,7 +339,7 @@ class _FilmographyState extends State<_Filmography> {
   @override
   void initState() {
     super.initState();
-    _future = sl.cast.getDramasForCast(widget.cast.dramaIds);
+    _future = sl.drama.getDramasByIds(widget.cast.dramaIds);
   }
 
   @override
@@ -359,6 +359,13 @@ class _FilmographyState extends State<_Filmography> {
                 ),
               ),
             )),
+          );
+        }
+        if (snap.hasError) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Text(snap.error.toString(),
+                style: QT.body(11, c: context.qp.ink3)),
           );
         }
         final dramas = snap.data ?? [];

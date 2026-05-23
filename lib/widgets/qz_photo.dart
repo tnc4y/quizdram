@@ -43,22 +43,25 @@ class QzPhoto extends StatelessWidget {
                 ),
               ),
             ),
-            // Network image overlay
+            // Network image — Positioned.fill ensures it covers the full area
             if (photoUrl != null && photoUrl!.isNotEmpty)
-              Image.network(
-                photoUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, e, stack) => const SizedBox.shrink(),
+              Positioned.fill(
+                child: Image.network(
+                  photoUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, e, stack) => const SizedBox.shrink(),
+                ),
               ),
-            // Diagonal stripe overlay
-            CustomPaint(
-              painter: StripePainter(
-                color: Colors.white,
-                opacity: 0.12,
-                stripeWidth: 12,
-                totalStep: 24,
+            // Diagonal stripe overlay (only for gradient placeholder)
+            if (photoUrl == null || photoUrl!.isEmpty)
+              CustomPaint(
+                painter: StripePainter(
+                  color: Colors.white,
+                  opacity: 0.12,
+                  stripeWidth: 12,
+                  totalStep: 24,
+                ),
               ),
-            ),
             // Vignette from bottom
             Container(
               decoration: BoxDecoration(

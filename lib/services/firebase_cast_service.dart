@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../lang.dart';
-import '../utils/korean_romanizer.dart';
 import 'cast_service.dart';
 
 class FirebaseCastService implements CastService {
@@ -18,30 +17,30 @@ class FirebaseCastService implements CastService {
     return snap.docs.map(_castFromDoc).toList();
   }
 
-  @override
-  Future<List<Drama>> getDramasForCast(List<String> dramaIds) async {
-    if (dramaIds.isEmpty) return [];
-    final snap = await _db
-        .collection('dramas')
-        .where(FieldPath.documentId, whereIn: dramaIds.take(10).toList())
-        .get();
-    return snap.docs.map(_dramaFromDoc).toList();
-  }
-
   CastMember _castFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data()!;
     final lang = appLang.value;
-    String name;
-    if (lang == 'ko') {
-      name = (d['nameKo'] ?? d['nameEn'] ?? d['name'] ?? '') as String;
-    } else {
-      final raw = (d['nameEn'] ?? d['name'] ?? '') as String;
-      name = (raw.isNotEmpty && KoreanRomanizer.hasHangul(raw))
-          ? KoreanRomanizer.romanize(raw)
-          : raw;
-    }
+    // name = romaji, nameKo = Korean
+    final name = (lang == 'ko'
+        ? (d['nameKo'] ?? d['name'])
+        : (d['name'] ?? d['nameEn'])) as String? ?? '';
     final hangul = d['nameKo'] as String? ?? d['hangul'] as String? ?? '';
-    final dramaIds = (d['dramaIds'] as List?)?.cast<String>() ?? [];
+
+    // dramaIds may be stale after doc-ID migration; supplement with tmdbCredits.
+    // Drama doc IDs = String(tmdbId), so credits give us reliable lookups.
+    final dramaIds = (d['dramaIds'] as List?)
+        ?.map((e) => e?.toString())
+        .whereType<String>()
+        .toList() ?? [];
+    final tmdbCredits = (d['tmdbCredits'] as List?) ?? [];
+    final creditIds = tmdbCredits
+        .whereType<Map>()
+        .map((c) => c['tmdbId'])
+        .whereType<num>()
+        .map((id) => id.toInt().toString())
+        .toList();
+    final allIds = {...dramaIds, ...creditIds}.toList();
+
     return CastMember(
       doc.id,
       name,
@@ -51,28 +50,7 @@ class FirebaseCastService implements CastService {
       (d['age'] as num?)?.toInt() ?? 0,
       _hexColor(d['hue'] as String?),
       photoUrl: d['photoUrl'] as String?,
-      dramaIds: dramaIds,
-    );
-  }
-
-  Drama _dramaFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final d = doc.data()!;
-    final lang = appLang.value;
-    final title = (lang == 'ko'
-        ? (d['titleKo'] ?? d['titleEn'] ?? d['title'])
-        : (d['titleEn'] ?? d['title'])) as String? ?? '';
-    final hangul = d['titleKo'] as String? ?? d['hangul'] as String? ?? '';
-    final genres = d['genres'] as List?;
-    final genre = (genres?.isNotEmpty == true ? genres!.first : d['genre']) as String? ?? '';
-    return Drama(
-      doc.id,
-      title,
-      hangul,
-      d['region'] as String? ?? 'kr',
-      (d['year'] as num?)?.toInt() ?? 0,
-      (d['episodes'] as num?)?.toInt() ?? 0,
-      genre,
-      _hexColor(d['hue'] as String?),
+      dramaIds: allIds,
     );
   }
 

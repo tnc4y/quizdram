@@ -57,9 +57,10 @@ async function fetchPersonData(
   headers: HeadersInit,
   dramaRegion: Region
 ): Promise<Omit<CastMember, 'id' | 'role' | 'order' | 'createdAt' | 'updatedAt'>> {
-  // 2 paralel istek — translations kaldırıldı (also_known_as yeterli, payload küçük)
+  // en-US: person.name garantili romaji (Park Seo-joon)
+  // also_known_as içinde Hangul (박서준) de geliyor
   const [personRes, tvCreditsRes] = await Promise.all([
-    fetch(`${TMDB_BASE}/person/${personId}?language=ko-KR`, { headers }),
+    fetch(`${TMDB_BASE}/person/${personId}?language=en-US`, { headers }),
     fetch(`${TMDB_BASE}/person/${personId}/tv_credits?language=ko-KR`, { headers }),
   ])
 
@@ -67,7 +68,7 @@ async function fetchPersonData(
   const tvCreditsData = tvCreditsRes.ok ? await tvCreditsRes.json() : { cast: [] }
 
   const bioTranslations: Record<string, string> = {}
-  if (person?.biography) bioTranslations['ko'] = person.biography
+  if (person?.biography) bioTranslations['en'] = person.biography
 
   // TV kredileri — tüm TMDB dizi görünümleri (film hariç)
   const tmdbCredits: TmdbCredit[] = (

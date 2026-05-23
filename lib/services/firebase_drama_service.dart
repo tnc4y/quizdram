@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../lang.dart';
 import 'drama_service.dart';
 
 class FirebaseDramaService implements DramaService {
@@ -17,17 +18,31 @@ class FirebaseDramaService implements DramaService {
     return snap.docs.map(_fromDoc).toList();
   }
 
-  Drama _fromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-    final d = doc.data();
+  @override
+  Future<List<Drama>> getDramasByIds(List<String> ids) async {
+    if (ids.isEmpty) return [];
+    final snaps = await Future.wait(
+      ids.take(20).map((id) => _db.collection('dramas').doc(id).get()),
+    );
+    return snaps.where((s) => s.exists).map(_fromDoc).toList();
+  }
+
+  Drama _fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final d = doc.data()!;
+    final lang = appLang.value;
+    final title = (lang == 'ko'
+        ? (d['titleKo'] ?? d['titleEn'] ?? d['title'])
+        : (d['titleEn'] ?? d['title'])) as String? ?? '';
+    final hangul = d['titleKo'] as String? ?? '';
     final genres = d['genres'] as List?;
     final genre = (genres?.isNotEmpty == true ? genres!.first : d['genre']) as String? ?? '';
     return Drama(
       doc.id,
-      d['title'] as String? ?? '',
-      d['titleKo'] as String? ?? '',
+      title,
+      hangul,
       d['region'] as String? ?? 'kr',
-      d['year'] as int? ?? 2024,
-      d['episodes'] as int? ?? 0,
+      (d['year'] as num?)?.toInt() ?? 2024,
+      (d['episodes'] as num?)?.toInt() ?? 0,
       genre,
       _hex(d['hue'] as String? ?? '#FF5470'),
     );
