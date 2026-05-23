@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dynamic_icon/flutter_dynamic_icon.dart';
 import '../theme.dart';
 import '../lang.dart';
 
@@ -18,6 +19,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _ThemeOption('cream',    'Krem',        'Direction A — Açık',  QzPalette.cream),
     _ThemeOption('midnight', 'Gece Yarısı', 'Direction B — Koyu',  QzPalette.midnight),
   ];
+
+  static const _icons = [
+    _IconOption('white', 'Beyaz', 'Varsayılan',    'assets/icons/icon_white.png'),
+    _IconOption('dark',  'Koyu',  'Gece Yarısı',   'assets/icons/icon_dark.png'),
+    _IconOption('gold',  'Altın', 'Premium',        'assets/icons/icon_gold.png'),
+  ];
+
+  Future<void> _setIcon(String iconId) async {
+    try {
+      final name = iconId == 'white' ? null
+                 : iconId == 'dark'  ? 'AppIconDark'
+                 :                     'AppIconGold';
+      await FlutterDynamicIcon.setAlternateIconName(name);
+      appIcon.value = iconId;
+      setState(() {});
+    } catch (_) {
+      // Platform desteklemiyor
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +156,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 28),
 
+          // ── Uygulama İkonu ─────────────────────────────────────
+          _SectionHeader('Uygulama İkonu', p),
+          const SizedBox(height: 10),
+          Row(
+            children: _icons.asMap().entries.map((e) {
+              final i = e.key;
+              final ico = e.value;
+              final active = appIcon.value == ico.id;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: i < _icons.length - 1 ? 10 : 0),
+                  child: GestureDetector(
+                    onTap: () => _setIcon(ico.id),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: active ? p.featured : p.card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: active ? p.pink : p.line,
+                          width: active ? 2 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.asset(ico.asset, width: 52, height: 52),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            ico.label,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: active ? p.ink : p.ink,
+                              fontFamily: 'Unbounded',
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            ico.sublabel,
+                            style: TextStyle(fontSize: 9, color: active ? p.ink2 : p.ink3),
+                          ),
+                          if (active) ...[
+                            const SizedBox(height: 6),
+                            Icon(Icons.check_circle_rounded, size: 13, color: p.pink),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 28),
+
           // ── Bildirimler ────────────────────────────────────────
           _SectionHeader('Bildirimler', p),
           const SizedBox(height: 10),
@@ -234,6 +314,11 @@ class _ThemeOption {
   final String id, label, sublabel;
   final QzPalette palette;
   const _ThemeOption(this.id, this.label, this.sublabel, this.palette);
+}
+
+class _IconOption {
+  final String id, label, sublabel, asset;
+  const _IconOption(this.id, this.label, this.sublabel, this.asset);
 }
 
 class _Swatch extends StatelessWidget {

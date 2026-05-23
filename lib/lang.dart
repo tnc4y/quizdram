@@ -7,6 +7,9 @@ final appLang = ValueNotifier<String>('tr');
 /// Active color palette — 'cream' | 'midnight'
 final appPalette = ValueNotifier<String>('cream');
 
+/// Active app icon — 'white' (default) | 'dark' | 'gold'
+final appIcon = ValueNotifier<String>('white');
+
 QzPalette get currentPalette =>
     appPalette.value == 'midnight' ? QzPalette.midnight : QzPalette.cream;
 
