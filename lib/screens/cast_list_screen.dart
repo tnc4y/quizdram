@@ -42,7 +42,7 @@ class _CastListScreenState extends State<CastListScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final region = _regions[_regionIdx] == 'all' ? null : _regions[_regionIdx];
-      final members = await sl.cast.getCast(region: region, limit: 60);
+      final members = await sl.cast.getCast(region: region, limit: 500);
       if (mounted) setState(() { _allMembers = members; _loading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
@@ -56,18 +56,25 @@ class _CastListScreenState extends State<CastListScreen> {
   }
 
   List<CastMember> get _filtered {
-    if (_query.isEmpty) return _allMembers;
-    final q = _query.toLowerCase();
-    return _allMembers.where((m) {
-      if (m.name.toLowerCase().contains(q)) return true;
-      if (m.hangul.toLowerCase().contains(q)) return true;
-      // search in romanized hangul so "lim" matches "임"
-      if (KoreanRomanizer.hasHangul(m.hangul) &&
-          KoreanRomanizer.romanize(m.hangul).toLowerCase().contains(q)) {
-        return true;
-      }
-      return false;
-    }).toList();
+    List<CastMember> members;
+    if (_query.isEmpty) {
+      members = List.of(_allMembers);
+    } else {
+      final q = _query.toLowerCase();
+      members = _allMembers.where((m) {
+        if (m.name.toLowerCase().contains(q)) return true;
+        if (m.hangul.toLowerCase().contains(q)) return true;
+        if (KoreanRomanizer.hasHangul(m.hangul) &&
+            KoreanRomanizer.romanize(m.hangul).toLowerCase().contains(q)) {
+          return true;
+        }
+        return false;
+      }).toList();
+    }
+    // popularity'e göre azalan sıra; popularity null ise sona at
+    members.sort((a, b) =>
+        (b.popularity ?? -1).compareTo(a.popularity ?? -1));
+    return members;
   }
 
   List<String> get _chips =>

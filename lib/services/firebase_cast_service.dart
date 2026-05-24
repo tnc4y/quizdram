@@ -50,6 +50,7 @@ class FirebaseCastService implements CastService {
       (d['age'] as num?)?.toInt() ?? 0,
       _hexColor(d['hue'] as String?),
       photoUrl: d['photoUrl'] as String?,
+      popularity: (d['popularity'] as num?)?.toDouble(),
       dramaIds: allIds,
     );
   }

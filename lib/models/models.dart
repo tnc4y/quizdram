@@ -21,10 +21,11 @@ class CastMember {
   final int age;
   final Color hue;
   final String? photoUrl;
+  final double? popularity;
   final List<String> dramaIds;
   const CastMember(this.id, this.name, this.hangul, this.region,
       this.role, this.age, this.hue,
-      {this.photoUrl, this.dramaIds = const []});
+      {this.photoUrl, this.popularity, this.dramaIds = const []});
 }
 
 // ── Quiz ───────────────────────────────────────────────────────

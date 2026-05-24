@@ -125,6 +125,7 @@ extension QzPaletteX on BuildContext {
 }
 
 // ── Text style helpers ──────────────────────────────────────────────
+
 class QT {
   static TextStyle display(
     double s, {
