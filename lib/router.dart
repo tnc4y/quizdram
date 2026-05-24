@@ -16,10 +16,11 @@ class AppRouter {
         (_) => false,
       );
 
-  /// Shell / Cast tab → Quiz play
-  static void toQuizPlay(BuildContext context) => Navigator.push(
+  /// Shell / Cast tab → Quiz play (optional packId, defaults to latest published)
+  static void toQuizPlay(BuildContext context, {String? packId}) =>
+      Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const QuizPlayScreen()),
+        MaterialPageRoute(builder: (_) => QuizPlayScreen(packId: packId)),
       );
 
   /// Quiz play → Quiz result (replaces play screen)

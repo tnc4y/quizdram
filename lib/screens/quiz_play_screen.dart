@@ -10,7 +10,8 @@ import '../router.dart';
 import '../services/service_locator.dart';
 
 class QuizPlayScreen extends StatefulWidget {
-  const QuizPlayScreen({super.key});
+  final String? packId;
+  const QuizPlayScreen({super.key, this.packId});
 
   @override
   State<QuizPlayScreen> createState() => _QuizPlayScreenState();
@@ -38,7 +39,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen> {
 
   Future<void> _loadQuestions() async {
     try {
-      final questions = await sl.quiz.getQuestions();
+      final questions = widget.packId != null
+          ? await sl.quiz.getQuestionsForPack(widget.packId!)
+          : await sl.quiz.getQuestions();
       if (!mounted) return;
       setState(() {
         _questions = questions;

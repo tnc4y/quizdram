@@ -57,6 +57,24 @@ class QuizQuestion {
   });
 }
 
+// ── Quiz Pack ──────────────────────────────────────────────────
+class QuizPackInfo {
+  final String id, title, difficulty, region;
+  final int questionCount, playCount;
+  final String? coverUrl, dramaTitle, quizType;
+  const QuizPackInfo({
+    required this.id,
+    required this.title,
+    required this.difficulty,
+    required this.region,
+    required this.questionCount,
+    required this.playCount,
+    this.coverUrl,
+    this.dramaTitle,
+    this.quizType,
+  });
+}
+
 // ── News ───────────────────────────────────────────────────────
 class NewsItem {
   final String id, tag, headline, source, time, hangul;

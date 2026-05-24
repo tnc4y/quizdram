@@ -12,6 +12,7 @@ export async function createQuizPack(input: {
   dramaId: string
   region: string
   difficulty: 'easy' | 'medium' | 'hard'
+  quizType?: string
 }): Promise<{ packId?: string; error?: string }> {
   try {
     const ref = adminDb.collection('quizPacks').doc()
@@ -21,6 +22,7 @@ export async function createQuizPack(input: {
       dramaId: input.dramaId,
       region: input.region,
       difficulty: input.difficulty,
+      quizType: input.quizType ?? 'mixed',
       questions: [],
       playCount: 0,
       status: 'draft',

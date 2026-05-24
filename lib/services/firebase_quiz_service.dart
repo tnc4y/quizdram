@@ -46,18 +46,96 @@ const _letters = ['a', 'b', 'c', 'd'];
 class FirebaseQuizService implements QuizService {
   final _db = FirebaseFirestore.instance;
 
+  // ── Pack list ─────────────────────────────────────────────────
+
+  @override
+  Future<List<QuizPackInfo>> getPacks() async {
+    // orderBy kaldırıldı — composite index gerektirmesin; client-side sort
+    final results = await Future.wait<QuerySnapshot<Map<String, dynamic>>>([
+      _db
+          .collection('quizPacks')
+          .where('status', isEqualTo: 'published')
+          .get(),
+      _db.collection('dramas').get(),
+    ]);
+    final packsSnap = results[0];
+    final dramasSnap = results[1];
+
+    final dramaMap = Map.fromEntries(
+      dramasSnap.docs.map((d) {
+        final data = d.data();
+        final title = (data['titleEn'] as String?)?.isNotEmpty == true
+            ? data['titleEn']!
+            : (data['titleKo'] as String? ?? data['title'] as String? ?? '');
+        return MapEntry(d.id, title);
+      }),
+    );
+
+    // En yeni paketler önce — client-side sort
+    final sortedDocs = packsSnap.docs.toList()
+      ..sort((a, b) {
+        final aTs = a.data()['createdAt'] as Timestamp?;
+        final bTs = b.data()['createdAt'] as Timestamp?;
+        if (aTs == null && bTs == null) return 0;
+        if (aTs == null) return 1;
+        if (bTs == null) return -1;
+        return bTs.compareTo(aTs);
+      });
+
+    return sortedDocs.map((d) {
+      final data = d.data();
+      final questions = data['questions'] as List? ?? [];
+      return QuizPackInfo(
+        id: d.id,
+        title: data['title'] as String? ?? '',
+        difficulty: data['difficulty'] as String? ?? 'medium',
+        region: data['region'] as String? ?? 'kr',
+        questionCount: questions.length,
+        playCount: data['playCount'] as int? ?? 0,
+        coverUrl: data['coverUrl'] as String?,
+        dramaTitle: dramaMap[data['dramaId'] as String? ?? ''],
+        quizType: data['quizType'] as String?,
+      );
+    }).toList();
+  }
+
+  // ── Questions for a specific pack ────────────────────────────
+
+  @override
+  Future<List<QuizQuestion>> getQuestionsForPack(String packId) async {
+    final doc = await _db.collection('quizPacks').doc(packId).get();
+    if (!doc.exists) return [];
+    return _resolvePackData(doc.data()!);
+  }
+
+  // ── Most-recent published pack (home hero) ────────────────────
+
   @override
   Future<List<QuizQuestion>> getQuestions() async {
+    // orderBy kaldırıldı; en yeni paketi client-side seçiyoruz
     final packSnap = await _db
         .collection('quizPacks')
         .where('status', isEqualTo: 'published')
-        .orderBy('createdAt', descending: true)
-        .limit(1)
+        .limit(10)
         .get();
 
     if (packSnap.docs.isEmpty) return [];
 
-    final packData = packSnap.docs.first.data();
+    final newest = packSnap.docs.reduce((a, b) {
+      final aTs = a.data()['createdAt'] as Timestamp?;
+      final bTs = b.data()['createdAt'] as Timestamp?;
+      if (aTs == null) return b;
+      if (bTs == null) return a;
+      return aTs.compareTo(bTs) >= 0 ? a : b;
+    });
+
+    return _resolvePackData(newest.data());
+  }
+
+  // ── Shared resolver ───────────────────────────────────────────
+
+  Future<List<QuizQuestion>> _resolvePackData(
+      Map<String, dynamic> packData) async {
     final rawList = (packData['questions'] as List<dynamic>? ?? [])
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList()

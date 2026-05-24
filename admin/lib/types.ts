@@ -163,6 +163,8 @@ export interface QuizGroup {
   updatedAt?: FirebaseFirestore.Timestamp
 }
 
+export type QuizType = 'trivia' | 'photo' | 'audio' | 'mixed'
+
 export interface QuizPack {
   id: string
   title: string
@@ -172,6 +174,7 @@ export interface QuizPack {
   dramaId: string
   region: Region
   difficulty: 'easy' | 'medium' | 'hard'
+  quizType?: QuizType
   coverUrl?: string
   questions: QuizQuestion[]
   playCount: number
