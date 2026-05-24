@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import type { CastMember } from '@/lib/types'
+import type { CastListItem } from './page'
+import { getCastById } from './actions'
 import { CastEditModal } from './cast-edit-modal'
-import { Pencil, Search } from 'lucide-react'
+import { Pencil, Search, Loader2 } from 'lucide-react'
 
 const REGION_LABEL: Record<string, string> = {
   kr: '🇰🇷 Kore',
@@ -25,11 +27,12 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 interface Props {
-  cast: CastMember[]
+  cast: CastListItem[]
 }
 
 export function CastTable({ cast }: Props) {
   const [editing, setEditing] = useState<CastMember | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
   const filtered = query.trim()
@@ -43,6 +46,16 @@ export function CastTable({ cast }: Props) {
         )
       })
     : cast
+
+  async function handleEdit(id: string) {
+    setLoadingId(id)
+    try {
+      const full = await getCastById(id)
+      if (full) setEditing(full)
+    } finally {
+      setLoadingId(null)
+    }
+  }
 
   if (cast.length === 0) {
     return (
@@ -126,12 +139,7 @@ export function CastTable({ cast }: Props) {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-zinc-500">
-                  <span title={`${member.tmdbCredits?.length ?? 0} TMDB kredisi`}>
-                    {member.dramaIds?.length ?? 0} import
-                    {member.tmdbCredits && member.tmdbCredits.length > 0 && (
-                      <span className="text-zinc-300 ml-1">/ {member.tmdbCredits.length} TMDB</span>
-                    )}
-                  </span>
+                  {member.dramaIds?.length ?? 0} import
                 </td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLE[member.status] ?? ''}`}>
@@ -140,10 +148,14 @@ export function CastTable({ cast }: Props) {
                 </td>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => setEditing(member)}
-                    className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+                    onClick={() => handleEdit(member.id)}
+                    disabled={loadingId === member.id}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-50"
                   >
-                    <Pencil size={14} />
+                    {loadingId === member.id
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <Pencil size={14} />
+                    }
                   </button>
                 </td>
               </tr>

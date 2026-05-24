@@ -28,6 +28,11 @@ export interface Drama {
   streamingPlatforms?: string[]
   tmdbId?: number
   kmdbId?: string
+  // TMDB'den gelen ek görseller (Firebase Storage URL'leri)
+  images?: {
+    backdrops?: string[]
+    posters?: string[]
+  }
   status: Status
   createdAt?: FirebaseFirestore.Timestamp
   updatedAt?: FirebaseFirestore.Timestamp
@@ -54,8 +59,14 @@ export interface CastMember {
   age: number             // CastMember.age
   hue: string             // CastMember.hue (hex)
   photoUrl?: string
+  profileImages?: string[] // ek profil fotoğrafları (Firebase Storage URL'leri)
   birthDate?: string      // 'YYYY-MM-DD'
+  gender?: number         // TMDB: 0=belirtilmemiş, 1=kadın, 2=erkek, 3=non-binary
   nationality?: string    // ISO 3166-1 alpha-2
+  placeOfBirth?: string
+  knownForDepartment?: string // 'Acting', 'Directing', vb.
+  imdbId?: string
+  popularity?: number
   bio?: string            // Biyografi (İngilizce / TMDB varsayılan)
   bioEn?: string
   bioKo?: string

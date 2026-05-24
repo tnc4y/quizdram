@@ -15,6 +15,13 @@ interface TmdbTranslation {
   data: { name?: string; overview?: string; biography?: string }
 }
 
+interface TmdbImage {
+  file_path: string
+  vote_average: number
+  width: number
+  height: number
+}
+
 // Hangul Unicode range check
 function containsHangul(s: string): boolean {
   return /[가-힣ᄀ-ᇿ㄰-㆏]/.test(s)
@@ -57,15 +64,15 @@ async function fetchPersonData(
   headers: HeadersInit,
   dramaRegion: Region
 ): Promise<Omit<CastMember, 'id' | 'role' | 'order' | 'createdAt' | 'updatedAt'>> {
-  // en-US: person.name garantili romaji (Park Seo-joon)
-  // also_known_as içinde Hangul (박서준) de geliyor
-  const [personRes, tvCreditsRes] = await Promise.all([
+  const [personRes, tvCreditsRes, personImagesRes] = await Promise.all([
     fetch(`${TMDB_BASE}/person/${personId}?language=en-US`, { headers }),
     fetch(`${TMDB_BASE}/person/${personId}/tv_credits?language=ko-KR`, { headers }),
+    fetch(`${TMDB_BASE}/person/${personId}/images`, { headers }),
   ])
 
   const person = personRes.ok ? await personRes.json() : null
   const tvCreditsData = tvCreditsRes.ok ? await tvCreditsRes.json() : { cast: [] }
+  const personImagesData = personImagesRes.ok ? await personImagesRes.json() : { profiles: [] }
 
   const bioTranslations: Record<string, string> = {}
   if (person?.biography) bioTranslations['en'] = person.biography
@@ -81,7 +88,7 @@ async function fetchPersonData(
       poster_path: string | null
     }>
   )
-    .filter((c) => !!c.first_air_date) // sadece TV dizileri
+    .filter((c) => !!c.first_air_date)
     .map((c) => ({
       tmdbId: c.id,
       title: c.name ?? c.original_name,
@@ -91,7 +98,6 @@ async function fetchPersonData(
       posterPath: c.poster_path ?? undefined,
     }))
 
-  // Doğum yılından yaklaşık yaş
   const birthDate: string | undefined = person?.birthday ?? undefined
   const age = birthDate
     ? new Date().getFullYear() - parseInt(birthDate.split('-')[0])
@@ -101,15 +107,29 @@ async function fetchPersonData(
   const alsoKnownAs: string[] = person?.also_known_as ?? []
   const koreanName = extractKoreanName([], alsoKnownAs, englishName)
 
+  // Profil fotoğrafları: ana profil_path hariç, oy ortalamasına göre sıralı ilk 3
+  const mainProfilePath: string = person?.profile_path ?? ''
+  const extraProfiles: string[] = ((personImagesData.profiles ?? []) as TmdbImage[])
+    .filter((img) => img.file_path !== mainProfilePath)
+    .sort((a, b) => b.vote_average - a.vote_average)
+    .slice(0, 3)
+    .map((img) => `${IMG_BASE}${img.file_path}`)
+
   return {
     name: englishName,
     nameKo: koreanName,
     region: dramaRegion,
     age,
     hue: '#000000',
+    gender: person?.gender ?? undefined,
+    placeOfBirth: person?.place_of_birth ?? undefined,
+    knownForDepartment: person?.known_for_department ?? undefined,
+    imdbId: person?.imdb_id ?? undefined,
+    popularity: person?.popularity ?? undefined,
     photoUrl: person?.profile_path
       ? `${IMG_BASE}${person.profile_path}`
       : undefined,
+    profileImages: extraProfiles.length > 0 ? extraProfiles : undefined,
     birthDate,
     bio: person?.biography || undefined,
     bioTranslations: Object.keys(bioTranslations).length > 0 ? bioTranslations : undefined,
@@ -133,11 +153,12 @@ export async function POST(request: Request) {
 
   const headers = { Authorization: `Bearer ${key}` }
 
-  // Drama için 3 paralel istek
-  const [tvRes, creditsRes, translationsRes] = await Promise.all([
+  // Drama için paralel istekler — images endpoint'i ek görseller için
+  const [tvRes, creditsRes, translationsRes, imagesRes] = await Promise.all([
     fetch(`${TMDB_BASE}/tv/${tmdbId}?language=ko-KR`, { headers }),
     fetch(`${TMDB_BASE}/tv/${tmdbId}/credits?language=ko-KR`, { headers }),
     fetch(`${TMDB_BASE}/tv/${tmdbId}/translations`, { headers }),
+    fetch(`${TMDB_BASE}/tv/${tmdbId}/images?include_image_language=null`, { headers }),
   ])
 
   if (!tvRes.ok) {
@@ -149,6 +170,7 @@ export async function POST(request: Request) {
   const translationsData = translationsRes.ok
     ? await translationsRes.json()
     : { translations: [] }
+  const imagesData = imagesRes.ok ? await imagesRes.json() : { backdrops: [], posters: [] }
 
   // Drama çevirileri
   const translations: Record<string, { title?: string; synopsis?: string }> = {}
@@ -162,6 +184,22 @@ export async function POST(request: Request) {
 
   const region = toRegion(tv.origin_country ?? [])
   const year = tv.first_air_date ? parseInt(tv.first_air_date.split('-')[0]) : 0
+
+  // Ana poster/backdrop dışındaki ek görseller (en iyi 5 backdrop, 3 poster)
+  const mainPosterPath: string = tv.poster_path ?? ''
+  const mainBackdropPath: string = tv.backdrop_path ?? ''
+
+  const extraBackdrops: string[] = ((imagesData.backdrops ?? []) as TmdbImage[])
+    .filter((img) => img.file_path !== mainBackdropPath)
+    .sort((a, b) => b.vote_average - a.vote_average)
+    .slice(0, 5)
+    .map((img) => `${IMG_ORIGINAL}${img.file_path}`)
+
+  const extraPosters: string[] = ((imagesData.posters ?? []) as TmdbImage[])
+    .filter((img) => img.file_path !== mainPosterPath)
+    .sort((a, b) => b.vote_average - a.vote_average)
+    .slice(0, 3)
+    .map((img) => `${IMG_BASE}${img.file_path}`)
 
   const drama: Omit<Drama, 'id' | 'createdAt' | 'updatedAt'> = {
     title: tv.name ?? '',
@@ -181,11 +219,16 @@ export async function POST(request: Request) {
     synopsisEn: translations['en']?.synopsis,
     synopsisTr: translations['tr']?.synopsis,
     translations: Object.keys(translations).length > 0 ? translations : undefined,
+    images: (extraBackdrops.length > 0 || extraPosters.length > 0)
+      ? {
+          backdrops: extraBackdrops.length > 0 ? extraBackdrops : undefined,
+          posters: extraPosters.length > 0 ? extraPosters : undefined,
+        }
+      : undefined,
     tmdbId: tv.id,
     status: 'draft',
   }
 
-  // Her cast üyesi için kişi detayı + çeviriler + TV kredileri paralel çek
   const rawCast = (credits.cast as RawCastMember[]).slice(0, 10)
 
   const cast = await Promise.all(

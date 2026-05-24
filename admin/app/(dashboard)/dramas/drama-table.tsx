@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import type { Drama } from '@/lib/types'
+import type { DramaListItem } from './page'
+import { getDramaById } from './actions'
 import { DramaEditModal } from './drama-edit-modal'
-import { Pencil, Search } from 'lucide-react'
+import { Pencil, Search, Loader2 } from 'lucide-react'
 
 const REGION_LABEL: Record<string, string> = {
   kr: '🇰🇷 Kore',
@@ -25,11 +27,12 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 interface Props {
-  dramas: Drama[]
+  dramas: DramaListItem[]
 }
 
 export function DramaTable({ dramas }: Props) {
   const [editing, setEditing] = useState<Drama | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
 
   const filtered = query.trim()
@@ -45,6 +48,16 @@ export function DramaTable({ dramas }: Props) {
         )
       })
     : dramas
+
+  async function handleEdit(id: string) {
+    setLoadingId(id)
+    try {
+      const full = await getDramaById(id)
+      if (full) setEditing(full)
+    } finally {
+      setLoadingId(null)
+    }
+  }
 
   if (dramas.length === 0) {
     return (
@@ -127,10 +140,14 @@ export function DramaTable({ dramas }: Props) {
                 </td>
                 <td className="px-4 py-3">
                   <button
-                    onClick={() => setEditing(drama)}
-                    className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors"
+                    onClick={() => handleEdit(drama.id)}
+                    disabled={loadingId === drama.id}
+                    className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors disabled:opacity-50"
                   >
-                    <Pencil size={14} />
+                    {loadingId === drama.id
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <Pencil size={14} />
+                    }
                   </button>
                 </td>
               </tr>
