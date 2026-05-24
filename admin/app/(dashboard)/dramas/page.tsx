@@ -4,6 +4,7 @@ import { DramaTable } from './drama-table'
 import { TmdbImportModal } from './tmdb-import-modal'
 import { MigrateDramaIdsBtn } from './migrate-ids-btn'
 import { MigrateDramaStorageBtn } from './migrate-storage-btn'
+import { RefreshDramasBtn } from './refresh-dramas-btn'
 
 // Tablo için gereken minimum alanlar — translations/synopsis*/images gibi büyük
 // alanları hariç tutar. Edit tıklandığında getDramaById() ile tam kayıt lazy fetch edilir.
@@ -37,6 +38,7 @@ export default async function DramasPage() {
         <div className="flex items-center gap-2">
           <MigrateDramaIdsBtn />
           <MigrateDramaStorageBtn />
+          <RefreshDramasBtn />
           <TmdbImportModal />
         </div>
       </div>
