@@ -17,7 +17,7 @@ async function getData(id: string) {
 
   return {
     news: JSON.parse(JSON.stringify(newsDoc.data())) as NewsItem,
-    dramas: dramasSnap.docs.map((d) => d.data() as Drama),
+    dramas: dramasSnap.docs.map((d) => JSON.parse(JSON.stringify(d.data())) as Drama),
   }
 }
 

@@ -5,7 +5,7 @@ import type { QuizQuestion, QuizOption, QuizTemplateKey, OptionStyle, QuizGroup 
 import { saveQuestion } from '../actions'
 import { Plus, Trash2, Volume2 } from 'lucide-react'
 import { SearchableSelect } from './searchable-select'
-import { ImagePicker, type ImageSource } from './image-picker'
+import { ImagePicker, type ImageSource, type ImageMeta } from './image-picker'
 
 interface DramaItem { id: string; title: string; titleKo: string; region: string; posterUrl: string; backdropUrl: string }
 interface CastItem { id: string; name: string; nameKo: string; photoUrl: string }
@@ -170,12 +170,17 @@ export function QuestionEditor({
     })
   }
 
-  function handleOptionImage(optId: string, url: string, file?: File) {
-    setOptions((prev) => prev.map((o) =>
-      o.id === optId
-        ? { ...o, imageUrl: file ? '' : url, imageFile: file ?? null, imagePreview: url || null }
-        : o
-    ))
+  function handleOptionImage(optId: string, url: string, file?: File, meta?: ImageMeta) {
+    setOptions((prev) => prev.map((o) => {
+      if (o.id !== optId) return o
+      const base = { ...o, imageUrl: file ? '' : url, imageFile: file ?? null, imagePreview: url || null }
+      // Kaynaktan seçildiğinde text/sub'ı otomatik doldur
+      if (meta) {
+        base.text = meta.label ?? base.text
+        base.sub  = meta.sub  ?? base.sub
+      }
+      return base
+    }))
   }
 
   function handleQImage(url: string, file?: File) {
@@ -518,7 +523,7 @@ export function QuestionEditor({
                             castSources={castImageSources}
                             dramaSources={dramaImageSources}
                             aspectRatio={optionStyle === 'poster' ? 'portrait' : 'square'}
-                            onChange={(url, file) => handleOptionImage(opt.id, url, file)}
+                            onChange={(url, file, meta) => handleOptionImage(opt.id, url, file, meta)}
                           />
                         </div>
                       )}

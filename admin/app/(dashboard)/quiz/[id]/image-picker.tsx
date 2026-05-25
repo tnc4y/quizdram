@@ -10,12 +10,19 @@ export interface ImageSource {
   sub?: string
 }
 
+export interface ImageMeta {
+  label?: string
+  sub?: string
+  sourceId?: string
+  sourceType?: 'cast' | 'drama'
+}
+
 interface Props {
   preview: string | null
   castSources: ImageSource[]
   dramaSources: ImageSource[]
   aspectRatio?: 'square' | 'portrait'
-  onChange: (url: string, file?: File) => void
+  onChange: (url: string, file?: File, meta?: ImageMeta) => void
 }
 
 type Tab = 'upload' | 'cast' | 'drama'
@@ -44,8 +51,13 @@ export function ImagePicker({ preview, castSources, dramaSources, aspectRatio = 
     onChange(URL.createObjectURL(file), file)
   }
 
-  function selectUrl(url: string) {
-    onChange(url, undefined)
+  function selectSource(item: ImageSource) {
+    onChange(item.imageUrl, undefined, {
+      label: item.label,
+      sub: item.sub,
+      sourceId: item.id,
+      sourceType: tab === 'cast' ? 'cast' : 'drama',
+    })
   }
 
   return (
@@ -135,7 +147,7 @@ export function ImagePicker({ preview, castSources, dramaSources, aspectRatio = 
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => selectUrl(item.imageUrl)}
+                    onClick={() => selectSource(item)}
                     title={item.label}
                     className={`relative rounded-lg overflow-hidden transition-all ${
                       tab === 'cast' ? 'aspect-square' : 'aspect-[2/3]'

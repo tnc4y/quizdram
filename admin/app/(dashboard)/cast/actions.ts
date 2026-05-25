@@ -91,7 +91,7 @@ export async function deleteCast(id: string): Promise<{ error?: string }> {
 
 export async function getCastList(): Promise<CastMember[]> {
   const snap = await adminDb.collection('cast').orderBy('createdAt', 'desc').get()
-  return snap.docs.map((d) => d.data() as CastMember)
+  return snap.docs.map((d) => JSON.parse(JSON.stringify(d.data())) as CastMember)
 }
 
 // Tek kaydın tamamını getirir — tablo sadece hafif alanları yükler, edit için bunu kullan

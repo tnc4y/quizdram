@@ -456,6 +456,42 @@ class _PosterBtn extends StatelessWidget {
               ),
             if (isCorrect)
               const ColoredBox(color: Color(0x33FFC857)),
+            // Drama/cast adı — resim varken alt kısımda gradient üstünde göster
+            if (option.imageUrl != null && option.text.isNotEmpty)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Color(0xCC000000), Colors.transparent],
+                    ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(6, 12, 6, 6),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        option.text,
+                        style: QT.display(10, c: Colors.white, w: FontWeight.w600, h: 1.2),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (option.sub.isNotEmpty)
+                        Text(
+                          option.sub,
+                          style: QT.hangul(9, c: Colors.white70),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             // Letter badge
             Positioned(
               top: 8,

@@ -8,7 +8,7 @@ async function getPublishedDramas(): Promise<Drama[]> {
     .where('status', '==', 'published')
     .orderBy('title')
     .get()
-  return snap.docs.map((d) => d.data() as Drama)
+  return snap.docs.map((d) => JSON.parse(JSON.stringify(d.data())) as Drama)
 }
 
 export default async function NewNewsPage() {
