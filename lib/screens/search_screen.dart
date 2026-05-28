@@ -208,6 +208,14 @@ class _SearchScreenState extends State<SearchScreen> {
             if (snap.connectionState == ConnectionState.waiting) {
               return _DramaShimmer();
             }
+            if (snap.hasError) {
+              return _ErrorState(
+                message: snap.error.toString(),
+                onRetry: () => setState(() {
+                  _dramaFuture = sl.drama.getAll(limit: 60);
+                }),
+              );
+            }
             final dramas = _filterDramas(snap.data ?? []);
             if (dramas.isEmpty) {
               return _EmptyState(
@@ -241,6 +249,14 @@ class _SearchScreenState extends State<SearchScreen> {
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
               return _CastShimmer();
+            }
+            if (snap.hasError) {
+              return _ErrorState(
+                message: snap.error.toString(),
+                onRetry: () => setState(() {
+                  _castFuture = sl.cast.getCast(limit: 500);
+                }),
+              );
             }
             final members = _filterCast(snap.data ?? []);
             if (members.isEmpty) {
@@ -301,6 +317,14 @@ class _SearchScreenState extends State<SearchScreen> {
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting) {
               return _NewsShimmer();
+            }
+            if (snap.hasError) {
+              return _ErrorState(
+                message: snap.error.toString(),
+                onRetry: () => setState(() {
+                  _newsFuture = sl.news.getNews();
+                }),
+              );
             }
             final items = _filterNews(snap.data ?? []);
             if (items.isEmpty) {
@@ -455,6 +479,60 @@ class _EmptyState extends StatelessWidget {
       height: 200,
       child: Center(
         child: Text(label, style: QT.body(14, c: context.qp.ink3)),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.qp;
+    return SizedBox(
+      height: 260,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.wifi_off_rounded, color: p.ink3, size: 32),
+              const SizedBox(height: 12),
+              Text(
+                t('Bağlantı hatası', 'Connection error', '연결 오류'),
+                style: QT.display(14, c: p.ink, w: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message,
+                style: QT.body(11, c: p.ink3),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: onRetry,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: p.featured,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    t('Tekrar dene', 'Retry', '다시 시도'),
+                    style: QT.body(13, c: Colors.white, w: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
