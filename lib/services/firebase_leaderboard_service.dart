@@ -7,33 +7,63 @@ class FirebaseLeaderboardService implements LeaderboardService {
   final _db = FirebaseFirestore.instance;
 
   @override
-  Future<List<LeaderEntry>> getWeekly() => _fetch('weekly');
+  Future<List<LeaderEntry>> getWeekly() => _fetchUsers('weeklyXp', fallback: 'xp');
 
   @override
-  Future<List<LeaderEntry>> getAllTime() => _fetch('allTime');
+  Future<List<LeaderEntry>> getAllTime() => _fetchUsers('xp');
 
   @override
-  Future<List<LeaderEntry>> getFriends() => _fetch('weekly');
+  Future<List<LeaderEntry>> getFriends() => _fetchUsers('xp');
 
-  Future<List<LeaderEntry>> _fetch(String type) async {
+  static String _fmtXp(int xp) {
+    final s = xp.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
+  Future<List<LeaderEntry>> _fetchUsers(String orderField, {String? fallback}) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    final snap = await _db
-        .collection('leaderboard')
-        .doc(type)
-        .collection('entries')
-        .orderBy('rank')
-        .limit(100)
-        .get();
 
-    return snap.docs.map((doc) {
-      final d = doc.data();
+    QuerySnapshot<Map<String, dynamic>> snap;
+    try {
+      snap = await _db
+          .collection('users')
+          .orderBy(orderField, descending: true)
+          .limit(50)
+          .get();
+    } catch (_) {
+      // Field doesn't exist on any doc — fall back to xp
+      if (fallback != null && fallback != orderField) {
+        snap = await _db
+            .collection('users')
+            .orderBy(fallback, descending: true)
+            .limit(50)
+            .get();
+      } else {
+        rethrow;
+      }
+    }
+
+    // Filter out users with no display name (anonymous / incomplete profiles)
+    final docs = snap.docs
+        .where((d) => (d.data()['displayName'] as String? ?? '').trim().isNotEmpty)
+        .toList();
+
+    return docs.asMap().entries.map((e) {
+      final rank = e.key + 1;
+      final d = e.value.data();
+      final xp = (d[orderField] as num? ?? d['xp'] as num? ?? 0).toInt();
       return LeaderEntry(
-        d['rank'] as int? ?? 0,
+        rank,
         d['displayName'] as String? ?? '',
         d['country'] as String? ?? '',
-        d['score'] as String? ?? '',
-        d['streak'] as int? ?? 0,
-        isYou: d['userId'] == uid,
+        _fmtXp(xp),
+        (d['streak'] as num?)?.toInt() ?? 0,
+        isYou: e.value.id == uid,
       );
     }).toList();
   }

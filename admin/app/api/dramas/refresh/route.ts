@@ -106,6 +106,11 @@ export async function POST() {
             updatedAt: FieldValue.serverTimestamp(),
           }
 
+          // TMDB popularity & ratings
+          if (typeof tv.popularity === 'number') patch.popularity = tv.popularity
+          if (typeof tv.vote_average === 'number') patch.voteAverage = tv.vote_average
+          if (typeof tv.vote_count === 'number') patch.voteCount = tv.vote_count
+
           // titleEn: translations['en'] varsa veya original_name Korece değilse
           const enTitle = translations['en']?.title
           const originalName: string = tv.original_name ?? ''

@@ -17,6 +17,18 @@ class FirebaseCastService implements CastService {
     return snap.docs.map(_castFromDoc).toList();
   }
 
+  @override
+  Future<List<CastMember>> getCastForDrama(String dramaId, {int limit = 12}) async {
+    final snap = await _db
+        .collection('cast')
+        .where('dramaIds', arrayContains: dramaId)
+        .limit(limit)
+        .get();
+    final results = snap.docs.map(_castFromDoc).toList()
+      ..sort((a, b) => (b.popularity ?? -1).compareTo(a.popularity ?? -1));
+    return results;
+  }
+
   CastMember _castFromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data()!;
     final lang = appLang.value;

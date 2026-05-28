@@ -6,7 +6,8 @@ import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
 import '../router.dart';
 import '../services/service_locator.dart';
-import 'cast_list_screen.dart';
+import 'drama_detail_screen.dart';
+import 'search_screen.dart';
 
 // ── Screen ───────────────────────────────────────────────────────
 class HomeScreen extends StatefulWidget {
@@ -112,7 +113,7 @@ class _Header extends StatelessWidget {
           children: [
             GestureDetector(
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CastListScreen()),
+                MaterialPageRoute(builder: (_) => const SearchScreen()),
               ),
               child: _IconBtn(Icons.search_rounded),
             ),
@@ -394,23 +395,29 @@ class _TrendingStrip extends StatelessWidget {
           final label = d.hangul.isNotEmpty ? d.hangul[0] : d.title[0];
           return Padding(
             padding: EdgeInsets.only(right: i < dramas.length - 1 ? 10 : 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                QzPhoto(
-                  hue: d.hue,
-                  label: d.posterUrl != null ? '' : label,
-                  photoUrl: d.posterUrl,
-                  width: 116,
-                  height: 150,
-                  borderRadius: 14,
-                ),
-                const SizedBox(height: 8),
-                Text(d.title,
-                    style: QT.display(13, c: context.qp.ink, w: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(d.genre, style: QT.body(11, c: context.qp.ink2)),
-              ],
+            child: GestureDetector(
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(
+                      builder: (_) => DramaDetailScreen(drama: d))),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  QzPhoto(
+                    hue: d.hue,
+                    label: d.posterUrl != null ? '' : label,
+                    photoUrl: d.posterUrl,
+                    width: 116,
+                    height: 150,
+                    borderRadius: 14,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(d.title,
+                      style: QT.display(13, c: context.qp.ink,
+                          w: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(d.genre, style: QT.body(11, c: context.qp.ink2)),
+                ],
+              ),
             ),
           );
         }),

@@ -27,6 +27,28 @@ class FirebaseDramaService implements DramaService {
     return snaps.where((s) => s.exists).map(_fromDoc).toList();
   }
 
+  @override
+  Future<List<Drama>> getAll({String? region, int limit = 60}) async {
+    Query<Map<String, dynamic>> q = _db
+        .collection('dramas')
+        .where('status', isEqualTo: 'published');
+    if (region != null) q = q.where('region', isEqualTo: region);
+    try {
+      final snap = await q
+          .orderBy('popularity', descending: true)
+          .limit(limit)
+          .get();
+      return snap.docs.map(_fromDoc).toList();
+    } catch (_) {
+      // popularity index not yet created — fall back to playCount
+      final snap = await q
+          .orderBy('playCount', descending: true)
+          .limit(limit)
+          .get();
+      return snap.docs.map(_fromDoc).toList();
+    }
+  }
+
   Drama _fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final d = doc.data()!;
     final lang = appLang.value;
@@ -36,6 +58,9 @@ class FirebaseDramaService implements DramaService {
     final hangul = d['titleKo'] as String? ?? '';
     final genres = d['genres'] as List?;
     final genre = (genres?.isNotEmpty == true ? genres!.first : d['genre']) as String? ?? '';
+    final synopsis = (lang == 'ko'
+        ? (d['synopsisKo'] ?? d['synopsisEn'] ?? d['synopsis'])
+        : (d['synopsisEn'] ?? d['synopsis'])) as String?;
     return Drama(
       doc.id,
       title,
@@ -46,6 +71,8 @@ class FirebaseDramaService implements DramaService {
       genre,
       _hex(d['hue'] as String? ?? '#FF5470'),
       posterUrl: d['posterUrl'] as String?,
+      popularity: (d['popularity'] as num?)?.toDouble(),
+      synopsis: synopsis,
     );
   }
 

@@ -25,6 +25,9 @@ export interface Drama {
   synopsisTr?: string
   // { 'tr': { title: '...', synopsis: '...' }, 'en': { ... }, 'ja': { ... }, ... }
   translations?: Record<string, { title?: string; synopsis?: string }>
+  popularity?: number
+  voteAverage?: number
+  voteCount?: number
   streamingPlatforms?: string[]
   tmdbId?: number
   kmdbId?: string
