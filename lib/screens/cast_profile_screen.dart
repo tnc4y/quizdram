@@ -70,10 +70,12 @@ class _CastProfileScreenState extends State<CastProfileScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _StatCell('12', S.dramas),
-                            _StatCell('4.8', S.rating),
-                            _StatCell('2.1M', S.fans),
-                            _StatCell('#3', S.rank),
+                            _StatCell(cast.dramaIds.isNotEmpty
+                                ? cast.dramaIds.length.toString()
+                                : '—', S.dramas),
+                            _StatCell('—', S.rating),
+                            _StatCell('—', S.fans),
+                            _StatCell('—', S.rank),
                           ],
                         ),
                       ),

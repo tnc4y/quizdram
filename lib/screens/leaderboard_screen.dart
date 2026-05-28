@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
-import '../data.dart';
+import '../models/models.dart';
 import '../lang.dart';
 import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
@@ -78,9 +78,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   if (snap.connectionState == ConnectionState.waiting) {
                     return const _LeaderLoadingShimmer();
                   }
-                  final entries = snap.data?.isNotEmpty == true
-                      ? snap.data!
-                      : kLeaders;
+                  final entries = snap.data ?? [];
+                  if (entries.isEmpty) return _EmptyLeaderboard();
                   return Column(
                     children: [
                       if (entries.length >= 3) _Podium(top3: entries.take(3).toList()),
@@ -96,6 +95,37 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyLeaderboard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final p = context.qp;
+    return SizedBox(
+      height: 260,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('1위', style: QT.hangul(64, c: p.pink.withValues(alpha: 0.2))),
+            const SizedBox(height: 12),
+            Text(
+              t('Henüz sıralama yok.', 'No rankings yet.', '아직 순위가 없습니다.'),
+              style: QT.body(14, c: p.ink2),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              t('İlk quiz\'i oyna ve liderboard\'a gir!',
+                  'Play your first quiz to get on the board!',
+                  '첫 퀴즈를 풀고 순위에 올라보세요!'),
+              style: QT.body(12, c: p.ink3),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

@@ -668,11 +668,49 @@ class FirebaseQuizService implements QuizService {
     });
 
     if (uid != null) {
+      final userRef = _db.collection('users').doc(uid);
+      final userSnap = await userRef.get();
+      final d = userSnap.data() ?? {};
+
+      final currentXp = (d['xp'] as num?)?.toInt() ?? 0;
+      final newTotalXp = currentXp + xp;
+      final newLevel = _levelFromXp(newTotalXp);
+
+      // Accuracy: rolling weighted average (quizzesPlayed * accuracy + correct%) / (quizzesPlayed+1)
+      final played = (d['quizzesPlayed'] as num?)?.toInt() ?? 0;
+      final oldAcc = (d['accuracy'] as num?)?.toInt() ?? 0;
+      final newAcc = total > 0
+          ? ((oldAcc * played + (correct * 100 ~/ total)) ~/ (played + 1))
+          : oldAcc;
+
+      // Streak calculation
+      final lastPlayed = d['lastPlayedAt'] as Timestamp?;
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      int newStreak = (d['streak'] as num?)?.toInt() ?? 0;
+      if (lastPlayed != null) {
+        final lastDate = lastPlayed.toDate();
+        final lastDay = DateTime(lastDate.year, lastDate.month, lastDate.day);
+        final diff = today.difference(lastDay).inDays;
+        if (diff == 0) {
+          // Already played today — streak unchanged
+        } else if (diff == 1) {
+          newStreak++; // Consecutive day
+        } else {
+          newStreak = 1; // Streak broken
+        }
+      } else {
+        newStreak = 1; // First play
+      }
+
       batch.set(
-        _db.collection('users').doc(uid),
+        userRef,
         {
-          'xp': FieldValue.increment(xp),
-          'quizzesPlayed': FieldValue.increment(1),
+          'xp': newTotalXp,
+          'level': newLevel,
+          'quizzesPlayed': played + 1,
+          'accuracy': newAcc,
+          'streak': newStreak,
           'lastPlayedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -681,6 +719,20 @@ class FirebaseQuizService implements QuizService {
 
     await batch.commit();
     return xp;
+  }
+
+  static int _xpForLevel(int level) {
+    if (level <= 1) return 0;
+    final n = level - 1;
+    return 1000 * n * (n + 1) ~/ 2;
+  }
+
+  static int _levelFromXp(int xp) {
+    int level = 1;
+    while (_xpForLevel(level + 1) <= xp) {
+      level++;
+    }
+    return level;
   }
 
   int _calcXp(int correct, int total, int elapsed) {

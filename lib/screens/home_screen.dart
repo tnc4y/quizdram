@@ -399,7 +399,8 @@ class _TrendingStrip extends StatelessWidget {
               children: [
                 QzPhoto(
                   hue: d.hue,
-                  label: label,
+                  label: d.posterUrl != null ? '' : label,
+                  photoUrl: d.posterUrl,
                   width: 116,
                   height: 150,
                   borderRadius: 14,

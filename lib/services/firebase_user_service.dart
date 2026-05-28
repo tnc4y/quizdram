@@ -17,17 +17,38 @@ class FirebaseUserService implements UserService {
   Future<String> getDisplayName() async {
     if (uid == null) return '';
     final snap = await _userDoc.get();
-    return snap.data()?['displayName'] as String? ?? '';
+    final stored = (snap.data()?['displayName'] as String? ?? '').trim();
+    if (stored.isNotEmpty) return stored;
+    return _auth.currentUser?.displayName ?? '';
   }
 
   @override
   Future<({int xp, int xpMax, int level})> getXpProgress() async {
     if (uid == null) return (xp: 0, xpMax: 1000, level: 1);
     final snap = await _userDoc.get();
-    final d = snap.data() ?? {};
-    final xp = d['xp'] as int? ?? 0;
-    final level = d['level'] as int? ?? 1;
-    return (xp: xp, xpMax: level * 1000, level: level);
+    final totalXp = (snap.data()?['xp'] as num?)?.toInt() ?? 0;
+    final level = _levelFromXp(totalXp);
+    final levelStart = _xpForLevel(level);
+    final levelEnd = _xpForLevel(level + 1);
+    return (xp: totalXp - levelStart, xpMax: levelEnd - levelStart, level: level);
+  }
+
+  // Total XP threshold to reach a given level (L1=0, L2=1000, L3=3000, L4=6000…)
+  static int _xpForLevel(int level) {
+    if (level <= 1) return 0;
+    // sum of 1000*(1+2+...+(level-1)) = 1000 * (level-1)*level/2
+    final n = level - 1;
+    return 1000 * n * (n + 1) ~/ 2;
+  }
+
+  static int _levelFromXp(int xp) {
+    // Solve xp >= 500*n*(n+1) → n ≤ (sqrt(1+2*xp/500)-1)/1
+    // Simple linear scan is fine; max practical XP ~ 10M → level ~140
+    int level = 1;
+    while (_xpForLevel(level + 1) <= xp) {
+      level++;
+    }
+    return level;
   }
 
   @override

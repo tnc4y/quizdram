@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dynamic_icon/flutter_dynamic_icon.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../theme.dart';
 import '../lang.dart';
 import '../data.dart';
+import '../services/service_locator.dart';
 import 'onboarding_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -19,40 +20,208 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _newsletter = false;
 
   static const _themes = [
-    _ThemeOption('cream',    'Krem',        'Direction A — Açık',  QzPalette.cream),
-    _ThemeOption('midnight', 'Gece Yarısı', 'Direction B — Koyu',  QzPalette.midnight),
+    _ThemeOption('cream',    'Krem',        'Açık',  QzPalette.cream),
+    _ThemeOption('midnight', 'Gece Yarısı', 'Koyu',  QzPalette.midnight),
   ];
 
-  static const _icons = [
-    _IconOption('white', 'Beyaz', 'Varsayılan',    'assets/icons/icon_white.png'),
-    _IconOption('dark',  'Koyu',  'Gece Yarısı',   'assets/icons/icon_dark.png'),
-    _IconOption('gold',  'Altın', 'Premium',        'assets/icons/icon_gold.png'),
-  ];
+  // ── Profile edit ───────────────────────────────────────────────
+  Future<void> _editProfile() async {
+    final ctrl = TextEditingController();
+    final currentName = await sl.user.getDisplayName();
+    ctrl.text = currentName;
+    if (!mounted) return;
 
-  Future<void> _setIcon(String iconId) async {
-    final supported = await FlutterDynamicIcon.supportsAlternateIcons;
-    if (!supported) {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.qp.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Profili Düzenle',
+            style: QT.display(16, c: ctx.qp.ink)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Kullanıcı adı',
+                style: QT.body(12, c: ctx.qp.ink2)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              style: QT.display(14, c: ctx.qp.ink),
+              decoration: InputDecoration(
+                hintText: 'kullanici_adi',
+                hintStyle: QT.body(13, c: ctx.qp.ink3),
+                filled: true,
+                fillColor: ctx.qp.sand,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('İptal', style: QT.body(13, c: ctx.qp.ink2)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: Text('Kaydet',
+                style: QT.body(13, c: ctx.qp.pink, w: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.length >= 3) {
+      await sl.user.saveUsername(result);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Uygulama ikonu değiştirme bu cihazda desteklenmiyor.')),
-        );
-      }
-      return;
-    }
-    try {
-      final name = iconId == 'white' ? null
-                 : iconId == 'dark'  ? 'AppIconDark'
-                 :                     'AppIconGold';
-      await FlutterDynamicIcon.setAlternateIconName(name);
-      appIcon.value = iconId;
-      setState(() {});
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('İkon değiştirilemedi: $e')),
+          SnackBar(
+            content: Text('Kullanıcı adı güncellendi.',
+                style: QT.body(13, c: Colors.white)),
+            backgroundColor: context.qp.featured,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
         );
       }
     }
+  }
+
+  // ── Privacy dialog ─────────────────────────────────────────────
+  void _showPrivacy() {
+    final p = context.qp;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.qp.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Gizlilik', style: QT.display(16, c: ctx.qp.ink)),
+        content: Text(
+          'Quizdram, kişisel verilerinizi yalnızca hizmet sağlamak amacıyla kullanır. '
+          'Quiz sonuçlarınız ve profil bilgileriniz Firebase altyapısında güvenle saklanır. '
+          'Üçüncü taraflarla paylaşılmaz.',
+          style: QT.body(13, c: ctx.qp.ink2, h: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Tamam',
+                style: QT.body(13, c: p.pink, w: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Security dialog ────────────────────────────────────────────
+  void _showSecurity() {
+    final user = FirebaseAuth.instance.currentUser;
+    final isAnon = user?.isAnonymous ?? true;
+    final isGoogle =
+        user?.providerData.any((p) => p.providerId == 'google.com') ?? false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.qp.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Şifre & Güvenlik',
+            style: QT.display(16, c: ctx.qp.ink)),
+        content: Text(
+          isAnon
+              ? 'Misafir hesabı kullanıyorsunuz. Kalıcı hesap oluşturmak için çıkıp Google ile giriş yapın.'
+              : isGoogle
+                  ? 'Google hesabınız ile giriş yapıyorsunuz. Şifrenizi Google hesap ayarlarından yönetebilirsiniz.'
+                  : 'Hesap güvenliğiniz için güçlü bir şifre kullandığınızdan emin olun.',
+          style: QT.body(13, c: ctx.qp.ink2, h: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Tamam',
+                style: QT.body(13, c: context.qp.pink, w: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Rate app ───────────────────────────────────────────────────
+  void _rateApp() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('App Store\'da değerlendirme yakında aktif olacak!',
+            style: QT.body(13, c: Colors.white)),
+        backgroundColor: context.qp.featured,
+        behavior: SnackBarBehavior.floating,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  // ── Share app ──────────────────────────────────────────────────
+  void _shareApp() {
+    Clipboard.setData(const ClipboardData(
+        text: 'Quizdram — K-Drama & Asya dizisi quiz uygulaması! '
+            'iOS ve Android\'de indirin.'));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Uygulama bağlantısı panoya kopyalandı!',
+            style: QT.body(13, c: Colors.white)),
+        backgroundColor: context.qp.featured,
+        behavior: SnackBarBehavior.floating,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  // ── About dialog ───────────────────────────────────────────────
+  void _showAbout() {
+    final p = context.qp;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.qp.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Text('퀴즈', style: QT.hangul(28, c: ctx.qp.pink)),
+            const SizedBox(width: 10),
+            Text('Quizdram', style: QT.display(16, c: ctx.qp.ink)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _AboutRow('Sürüm', 'v1.0.0 (build 1)', ctx.qp),
+            const SizedBox(height: 8),
+            _AboutRow('Geliştirici', 'Quizdram Team', ctx.qp),
+            const SizedBox(height: 8),
+            _AboutRow('Platform', 'Flutter · Firebase', ctx.qp),
+            const SizedBox(height: 8),
+            _AboutRow('Tasarım', 'Direction A — Cream K-pop', ctx.qp),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Kapat',
+                style: QT.body(13, c: p.pink, w: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -76,12 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         title: Text('Ayarlar',
-            style: TextStyle(
-              fontFamily: 'Unbounded',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: p.ink,
-            )),
+            style: QT.display(16, c: p.ink)),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
@@ -100,70 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       appPalette.value = t.id;
                       setState(() {});
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: active ? t.palette.featured : p.card,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: active ? t.palette.pink : p.line,
-                          width: active ? 2 : 1,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Mini palette swatch
-                          Row(
-                            children: [
-                              _Swatch(t.palette.bg),
-                              const SizedBox(width: 4),
-                              _Swatch(t.palette.card),
-                              const SizedBox(width: 4),
-                              _Swatch(t.palette.pink),
-                              const SizedBox(width: 4),
-                              _Swatch(t.palette.gold),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            t.label,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: active ? t.palette.ink : p.ink,
-                              fontFamily: 'Unbounded',
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            t.sublabel,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: active
-                                  ? t.palette.ink2
-                                  : p.ink2,
-                            ),
-                          ),
-                          if (active) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(Icons.check_circle_rounded,
-                                    size: 13, color: t.palette.pink),
-                                const SizedBox(width: 4),
-                                Text('Aktif',
-                                    style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: t.palette.pink)),
-                              ],
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                    child: _ThemeCard(option: t, active: active),
                   ),
                 ),
               );
@@ -172,62 +273,105 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 28),
 
-          // ── Uygulama İkonu ─────────────────────────────────────
-          _SectionHeader('Uygulama İkonu', p),
+          // ── Dil ───────────────────────────────────────────────
+          _SectionHeader('Dil', p),
           const SizedBox(height: 10),
-          Row(
-            children: _icons.asMap().entries.map((e) {
-              final i = e.key;
-              final ico = e.value;
-              final active = appIcon.value == ico.id;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: i < _icons.length - 1 ? 10 : 0),
-                  child: GestureDetector(
-                    onTap: () => _setIcon(ico.id),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: active ? p.featured : p.card,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: active ? p.pink : p.line,
-                          width: active ? 2 : 1,
-                        ),
-                      ),
-                      child: Column(
+          ValueListenableBuilder<String>(
+            valueListenable: appLang,
+            builder: (context, lang, _) {
+              final p = context.qp;
+              return Container(
+                decoration: BoxDecoration(
+                  color: p.card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: p.line),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: lang,
+                    isExpanded: true,
+                    dropdownColor: p.card,
+                    icon: Icon(Icons.keyboard_arrow_down_rounded,
+                        color: p.ink2, size: 20),
+                    selectedItemBuilder: (_) => kLangs.map((l) {
+                      return Row(
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.asset(ico.asset, width: 52, height: 52),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            ico.label,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: active ? p.ink : p.ink,
-                              fontFamily: 'Unbounded',
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: p.pink,
+                              borderRadius: BorderRadius.circular(8),
                             ),
+                            alignment: Alignment.center,
+                            child: Text(l.glyph,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: p.bg,
+                                )),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            ico.sublabel,
-                            style: TextStyle(fontSize: 9, color: active ? p.ink2 : p.ink3),
-                          ),
-                          if (active) ...[
-                            const SizedBox(height: 6),
-                            Icon(Icons.check_circle_rounded, size: 13, color: p.pink),
-                          ],
+                          const SizedBox(width: 10),
+                          Text(l.label,
+                              style: QT.body(14,
+                                  c: p.ink, w: FontWeight.w600)),
+                          const SizedBox(width: 4),
+                          Text('(${l.native})',
+                              style: QT.body(12, c: p.ink2)),
                         ],
-                      ),
-                    ),
+                      );
+                    }).toList(),
+                    items: kLangs.map((l) {
+                      final isSelected = l.code == lang;
+                      return DropdownMenuItem<String>(
+                        value: l.code,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: isSelected ? p.pink : p.sand,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(l.glyph,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: isSelected ? p.bg : p.ink2,
+                                  )),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(l.label,
+                                      style: QT.body(13,
+                                          c: p.ink, w: FontWeight.w600)),
+                                  Text(l.native,
+                                      style: QT.body(11, c: p.ink2)),
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              Icon(Icons.check_rounded,
+                                  color: p.pink, size: 16),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (code) {
+                      if (code != null) appLang.value = code;
+                    },
                   ),
                 ),
               );
-            }).toList(),
+            },
           ),
 
           const SizedBox(height: 28),
@@ -266,77 +410,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 28),
 
-          // ── Dil ───────────────────────────────────────────────
-          _SectionHeader('Dil', p),
-          const SizedBox(height: 10),
-          ValueListenableBuilder<String>(
-            valueListenable: appLang,
-            builder: (context, lang, _) {
-              final rows = <Widget>[];
-              for (var i = 0; i < kLangs.length; i++) {
-                final l = kLangs[i];
-                final active = lang == l.code;
-                rows.add(GestureDetector(
-                  onTap: () => appLang.value = l.code,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: active ? p.pink : p.sand,
-                            borderRadius: BorderRadius.circular(9),
-                          ),
-                          alignment: Alignment.center,
-                          child: Text(l.glyph,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: active ? p.bg : p.ink2,
-                              )),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(l.label,
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: p.ink)),
-                              Text(l.native,
-                                  style: TextStyle(fontSize: 11, color: p.ink2)),
-                            ],
-                          ),
-                        ),
-                        if (active)
-                          Icon(Icons.check_rounded, color: p.pink, size: 18),
-                      ],
-                    ),
-                  ),
-                ));
-                if (i < kLangs.length - 1) {
-                  rows.add(Divider(height: 1, color: p.line));
-                }
-              }
-              return _SettingsCard(p, children: rows);
-            },
-          ),
-
-          const SizedBox(height: 28),
-
           // ── Hesap ─────────────────────────────────────────────
           _SectionHeader('Hesap', p),
           const SizedBox(height: 10),
           _SettingsCard(p, children: [
-            _NavRow(p: p, icon: Icons.person_outline_rounded, label: 'Profili Düzenle'),
+            _NavRow(
+              p: p,
+              icon: Icons.person_outline_rounded,
+              label: 'Profili Düzenle',
+              onTap: _editProfile,
+            ),
             Divider(height: 1, color: p.line),
-            _NavRow(p: p, icon: Icons.shield_outlined, label: 'Gizlilik'),
+            _NavRow(
+              p: p,
+              icon: Icons.shield_outlined,
+              label: 'Gizlilik',
+              onTap: _showPrivacy,
+            ),
             Divider(height: 1, color: p.line),
-            _NavRow(p: p, icon: Icons.lock_outline_rounded, label: 'Şifre & Güvenlik'),
+            _NavRow(
+              p: p,
+              icon: Icons.lock_outline_rounded,
+              label: 'Şifre & Güvenlik',
+              onTap: _showSecurity,
+            ),
           ]),
 
           const SizedBox(height: 28),
@@ -345,11 +442,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _SectionHeader('Uygulama', p),
           const SizedBox(height: 10),
           _SettingsCard(p, children: [
-            _NavRow(p: p, icon: Icons.star_outline_rounded, label: 'Quizdram\'ı Değerlendir'),
+            _NavRow(
+              p: p,
+              icon: Icons.star_outline_rounded,
+              label: 'Quizdram\'ı Değerlendir',
+              onTap: _rateApp,
+            ),
             Divider(height: 1, color: p.line),
-            _NavRow(p: p, icon: Icons.share_outlined, label: 'Arkadaşına Öner'),
+            _NavRow(
+              p: p,
+              icon: Icons.share_outlined,
+              label: 'Arkadaşına Öner',
+              onTap: _shareApp,
+            ),
             Divider(height: 1, color: p.line),
-            _NavRow(p: p, icon: Icons.info_outline_rounded, label: 'Hakkında'),
+            _NavRow(
+              p: p,
+              icon: Icons.info_outline_rounded,
+              label: 'Hakkında',
+              onTap: _showAbout,
+            ),
           ]),
 
           const SizedBox(height: 28),
@@ -374,19 +486,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               alignment: Alignment.center,
               child: Text('Çıkış Yap',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: p.pink,
-                    fontFamily: 'Unbounded',
-                  )),
+                  style: QT.display(14, c: p.pink)),
             ),
           ),
 
           const SizedBox(height: 16),
           Center(
-            child: Text('Quizdram v0.1.0',
-                style: TextStyle(fontSize: 11, color: p.ink3)),
+            child: Text('Quizdram v1.0.0',
+                style: QT.body(11, c: p.ink3)),
           ),
         ],
       ),
@@ -394,7 +501,141 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-// ── Alt widget'lar ──────────────────────────────────────────────────
+// ── Theme card ──────────────────────────────────────────────────────
+
+class _ThemeCard extends StatelessWidget {
+  final _ThemeOption option;
+  final bool active;
+  const _ThemeCard({required this.option, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    final tp = option.palette;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: tp.bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: active ? tp.pink : tp.line,
+          width: active ? 2 : 1,
+        ),
+        boxShadow: active
+            ? [BoxShadow(color: tp.pink.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 3))]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Mini UI preview header
+          Container(
+            height: 52,
+            decoration: BoxDecoration(
+              color: tp.featured,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(14)),
+            ),
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: tp.pink,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                          height: 6,
+                          decoration: BoxDecoration(
+                              color: tp.bg.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(3))),
+                      const SizedBox(height: 4),
+                      Container(
+                          width: 40,
+                          height: 5,
+                          decoration: BoxDecoration(
+                              color: tp.gold.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(2))),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Card body with labels
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(option.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: tp.ink,
+                      fontFamily: 'Unbounded',
+                    )),
+                const SizedBox(height: 2),
+                Text(option.sublabel,
+                    style: TextStyle(fontSize: 10, color: tp.ink2)),
+                const SizedBox(height: 8),
+                // Color swatches
+                Row(
+                  children: [
+                    _Swatch(tp.bg, tp.line),
+                    const SizedBox(width: 4),
+                    _Swatch(tp.card, tp.line),
+                    const SizedBox(width: 4),
+                    _Swatch(tp.pink, Colors.transparent),
+                    const SizedBox(width: 4),
+                    _Swatch(tp.gold, Colors.transparent),
+                    const Spacer(),
+                    if (active)
+                      Icon(Icons.check_circle_rounded,
+                          size: 14, color: tp.pink),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── About row helper ────────────────────────────────────────────────
+
+class _AboutRow extends StatelessWidget {
+  final String label, value;
+  final QzPalette p;
+  const _AboutRow(this.label, this.value, this.p);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 90,
+          child: Text(label, style: QT.body(12, c: p.ink3)),
+        ),
+        Expanded(child: Text(value, style: QT.body(12, c: p.ink, w: FontWeight.w600))),
+      ],
+    );
+  }
+}
+
+// ── Shared data holders ─────────────────────────────────────────────
 
 class _ThemeOption {
   final String id, label, sublabel;
@@ -402,19 +643,18 @@ class _ThemeOption {
   const _ThemeOption(this.id, this.label, this.sublabel, this.palette);
 }
 
-class _IconOption {
-  final String id, label, sublabel, asset;
-  const _IconOption(this.id, this.label, this.sublabel, this.asset);
-}
-
 class _Swatch extends StatelessWidget {
-  final Color color;
-  const _Swatch(this.color);
+  final Color color, border;
+  const _Swatch(this.color, this.border);
   @override
   Widget build(BuildContext context) => Container(
-        width: 14,
-        height: 14,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        width: 13,
+        height: 13,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: border, width: 0.5),
+        ),
       );
 }
 
@@ -485,9 +725,10 @@ class _Toggle extends StatelessWidget {
                 children: [
                   Text(label,
                       style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w600, color: p.ink)),
-                  Text(sub,
-                      style: TextStyle(fontSize: 11, color: p.ink2)),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: p.ink)),
+                  Text(sub, style: TextStyle(fontSize: 11, color: p.ink2)),
                 ],
               ),
             ),
@@ -506,30 +747,42 @@ class _NavRow extends StatelessWidget {
   final QzPalette p;
   final IconData icon;
   final String label;
-  const _NavRow({required this.p, required this.icon, required this.label});
+  final VoidCallback? onTap;
+  const _NavRow({
+    required this.p,
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: p.sand,
-                borderRadius: BorderRadius.circular(9),
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: p.sand,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, color: p.ink2, size: 16),
               ),
-              child: Icon(icon, color: p.ink2, size: 16),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(label,
-                  style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: p.ink)),
-            ),
-            Icon(Icons.chevron_right_rounded, color: p.ink3, size: 18),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(label,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: p.ink)),
+              ),
+              Icon(Icons.chevron_right_rounded, color: p.ink3, size: 18),
+            ],
+          ),
         ),
       );
 }

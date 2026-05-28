@@ -11,8 +11,9 @@ class Drama {
   final String id, title, hangul, region, genre;
   final int year, eps;
   final Color hue;
+  final String? posterUrl;
   const Drama(this.id, this.title, this.hangul, this.region,
-      this.year, this.eps, this.genre, this.hue);
+      this.year, this.eps, this.genre, this.hue, {this.posterUrl});
 }
 
 // ── Cast ───────────────────────────────────────────────────────

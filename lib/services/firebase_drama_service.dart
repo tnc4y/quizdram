@@ -45,6 +45,7 @@ class FirebaseDramaService implements DramaService {
       (d['episodes'] as num?)?.toInt() ?? 0,
       genre,
       _hex(d['hue'] as String? ?? '#FF5470'),
+      posterUrl: d['posterUrl'] as String?,
     );
   }
 
