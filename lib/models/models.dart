@@ -80,9 +80,15 @@ class QuizPackInfo {
 class NewsItem {
   final String id, tag, headline, source, time, hangul;
   final Color hue, tagBg, tagFg;
+  final String? imageUrl;
+  final String? body;
+  final String? sourceUrl;
   const NewsItem(this.id, this.tag, this.headline, this.source, this.time,
       this.hue, this.hangul, this.tagBg,
-      {this.tagFg = const Color(0xFF2D1B4E)});
+      {this.tagFg = const Color(0xFF2D1B4E),
+       this.imageUrl,
+       this.body,
+       this.sourceUrl});
 }
 
 // ── Leaderboard ────────────────────────────────────────────────

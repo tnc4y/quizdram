@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../theme.dart';
 import '../models/models.dart';
 import '../lang.dart';
@@ -6,6 +7,7 @@ import '../widgets/qz_photo.dart';
 import '../widgets/qz_chip.dart';
 import '../widgets/stripe_painter.dart';
 import '../services/service_locator.dart';
+import 'news_detail_screen.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -110,11 +112,21 @@ class _NewsScreenState extends State<NewsScreen> {
                   }
                   return Column(
                     children: [
-                      _FeaturedCard(news: items[0]),
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(
+                          builder: (_) => NewsDetailScreen(news: items[0]),
+                        )),
+                        child: _FeaturedCard(news: items[0]),
+                      ),
                       const SizedBox(height: 18),
                       ...items.skip(1).map((n) => Padding(
                         padding: const EdgeInsets.only(bottom: 14),
-                        child: _NewsRow(news: n),
+                        child: GestureDetector(
+                          onTap: () => Navigator.push(context, MaterialPageRoute(
+                            builder: (_) => NewsDetailScreen(news: n),
+                          )),
+                          child: _NewsRow(news: n),
+                        ),
                       )),
                       const SizedBox(height: 100),
                     ],
@@ -201,6 +213,7 @@ class _FeaturedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.qp;
+    final hasImage = news.imageUrl != null && news.imageUrl!.isNotEmpty;
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
@@ -208,27 +221,42 @@ class _FeaturedCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Container(
+            // Background: real image or gradient
+            if (hasImage)
+              CachedNetworkImage(
+                imageUrl: news.imageUrl!,
+                fit: BoxFit.cover,
+                placeholder: (_, _) => _FeaturedGradient(news: news),
+                errorWidget: (_, _, _) => _FeaturedGradient(news: news),
+              )
+            else
+              _FeaturedGradient(news: news),
+
+            // Scrim for readability
+            DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [p.pink, const Color(0xFFFF8AA3), p.gold],
-                  stops: const [0.0, 0.6, 1.0],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: hasImage ? 0.25 : 0.0),
+                    Colors.black.withValues(alpha: hasImage ? 0.65 : 0.45),
+                  ],
                 ),
               ),
             ),
-            CustomPaint(
-              painter: StripePainter(color: p.featured, opacity: 0.08, stripeWidth: 12, totalStep: 24),
-            ),
-            Positioned(
-              top: -10,
-              right: -8,
-              child: IgnorePointer(
-                child: Text(news.hangul,
-                    style: QT.hangul(110, c: p.featured.withValues(alpha: 0.18), w: FontWeight.w900)),
+
+            // Hangul decoration (only without image)
+            if (!hasImage)
+              Positioned(
+                top: -10,
+                right: -8,
+                child: IgnorePointer(
+                  child: Text(news.hangul,
+                      style: QT.hangul(110, c: p.featured.withValues(alpha: 0.18), w: FontWeight.w900)),
+                ),
               ),
-            ),
+
             Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
@@ -243,45 +271,18 @@ class _FeaturedCard extends StatelessWidget {
                         child: Text(news.tag, style: QT.body(9, w: FontWeight.w700, c: news.tagFg, ls: 1)),
                       ),
                       const SizedBox(width: 8),
-                      Text(news.time, style: QT.body(11, c: p.featured.withValues(alpha: 0.7))),
+                      if (news.time.isNotEmpty)
+                        Text(news.time, style: QT.body(11, c: Colors.white.withValues(alpha: 0.75))),
                     ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(news.headline,
-                          style: QT.display(20, c: p.featured, w: FontWeight.w700, h: 1.15, ls: -20 * 0.02)),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 36,
-                            height: 22,
-                            child: Stack(children: [
-                              Container(
-                                width: 22,
-                                height: 22,
-                                decoration: BoxDecoration(
-                                    color: p.featured, shape: BoxShape.circle,
-                                    border: Border.all(color: p.pink, width: 2)),
-                              ),
-                              Positioned(
-                                left: 14,
-                                child: Container(
-                                  width: 22,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                      color: p.purple, shape: BoxShape.circle,
-                                      border: Border.all(color: p.pink, width: 2)),
-                                ),
-                              ),
-                            ]),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('14.8K beğeni · 2.1K yorum',
-                              style: QT.body(11, c: p.featured.withValues(alpha: 0.8))),
-                        ],
-                      ),
+                          style: QT.display(20, c: Colors.white, w: FontWeight.w700, h: 1.15, ls: -20 * 0.02)),
+                      const SizedBox(height: 8),
+                      Text(news.source,
+                          style: QT.body(11, c: Colors.white.withValues(alpha: 0.75), w: FontWeight.w600)),
                     ],
                   ),
                 ],
@@ -290,6 +291,34 @@ class _FeaturedCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _FeaturedGradient extends StatelessWidget {
+  final NewsItem news;
+  const _FeaturedGradient({required this.news});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.qp;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [p.pink, const Color(0xFFFF8AA3), p.gold],
+              stops: const [0.0, 0.6, 1.0],
+            ),
+          ),
+        ),
+        CustomPaint(
+          painter: StripePainter(color: p.featured, opacity: 0.08, stripeWidth: 12, totalStep: 24),
+        ),
+      ],
     );
   }
 }
@@ -306,7 +335,8 @@ class _NewsRow extends StatelessWidget {
       children: [
         QzPhoto(
           hue: news.hue,
-          label: news.hangul,
+          label: news.imageUrl != null ? '' : news.hangul,
+          photoUrl: news.imageUrl,
           width: 88,
           height: 100,
           borderRadius: 14,
