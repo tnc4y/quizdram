@@ -11,11 +11,18 @@ class FirebaseDramaService implements DramaService {
   Future<List<Drama>> getTrending({int limit = 6}) async {
     final snap = await _db
         .collection('dramas')
-        .where('status', isEqualTo: 'published')
-        .orderBy('playCount', descending: true)
         .limit(limit)
         .get();
-    return snap.docs.map(_fromDoc).toList();
+    final results = snap.docs.map(_fromDoc).toList();
+    results.sort((a, b) {
+      if (a.popularity != null && b.popularity != null) {
+        return b.popularity!.compareTo(a.popularity!);
+      }
+      if (a.popularity != null) return -1;
+      if (b.popularity != null) return 1;
+      return 0;
+    });
+    return results;
   }
 
   @override
@@ -29,18 +36,16 @@ class FirebaseDramaService implements DramaService {
 
   @override
   Future<List<Drama>> getAll({String? region, int limit = 60}) async {
-    // Reuse the existing status+playCount composite index; sort by TMDB
-    // popularity client-side so no extra Firestore index is required.
+    // No orderBy — avoids Firestore excluding docs that lack the field.
+    // Status and popularity are handled client-side.
     final snap = await _db
         .collection('dramas')
-        .where('status', isEqualTo: 'published')
-        .orderBy('playCount', descending: true)
         .limit(limit)
         .get();
-    final results = snap.docs.map(_fromDoc).toList();
-    if (region != null) {
-      results.retainWhere((d) => d.region == region);
-    }
+    final results = snap.docs
+        .map(_fromDoc)
+        .where((d) => region == null || d.region == region)
+        .toList();
     results.sort((a, b) {
       if (a.popularity != null && b.popularity != null) {
         return b.popularity!.compareTo(a.popularity!);
