@@ -126,6 +126,16 @@ extension QzPaletteX on BuildContext {
 
 // ── Text style helpers ──────────────────────────────────────────────
 
+// GoogleFonts sets its own fontFamilyFallback internally, so we append to it
+// rather than overwrite — iOS won't fall back to the emoji font on its own
+// when a custom fontFamily is set, unlike Android/web.
+TextStyle _withEmojiFallback(TextStyle style) => style.copyWith(
+      fontFamilyFallback: [
+        ...?style.fontFamilyFallback,
+        'Apple Color Emoji',
+      ],
+    );
+
 class QT {
   static TextStyle display(
     double s, {
@@ -134,20 +144,20 @@ class QT {
     double? ls,
     double h = 1.0,
   }) =>
-      GoogleFonts.unbounded(
+      _withEmojiFallback(GoogleFonts.unbounded(
         fontSize: s,
         fontWeight: w,
         color: c,
         letterSpacing: ls ?? -s * 0.03,
         height: h,
-      );
+      ));
 
   static TextStyle serif(double s, {Color c = C.ink2}) =>
-      GoogleFonts.playfairDisplay(
+      _withEmojiFallback(GoogleFonts.playfairDisplay(
         fontSize: s,
         fontStyle: FontStyle.italic,
         color: c,
-      );
+      ));
 
   static TextStyle hangul(
     double s, {
@@ -155,12 +165,12 @@ class QT {
     Color? c,
     double ls = 0,
   }) =>
-      GoogleFonts.notoSansKr(
+      _withEmojiFallback(GoogleFonts.notoSansKr(
         fontSize: s,
         fontWeight: w,
         color: c ?? C.ink,
         letterSpacing: ls,
-      );
+      ));
 
   static TextStyle body(
     double s, {
@@ -169,13 +179,13 @@ class QT {
     double? ls,
     double? h,
   }) =>
-      GoogleFonts.inter(
+      _withEmojiFallback(GoogleFonts.inter(
         fontSize: s,
         fontWeight: w,
         color: c ?? C.ink,
         letterSpacing: ls,
         height: h,
-      );
+      ));
 }
 
 ThemeData buildAppTheme(QzPalette p) => ThemeData(
